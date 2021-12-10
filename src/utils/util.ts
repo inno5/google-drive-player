@@ -1,3 +1,5 @@
+import { FileData } from "@/interface/interface";
+
 export const isPC = (): boolean => {
   const ua = navigator.userAgent;
   if (
@@ -13,4 +15,8 @@ export const isPC = (): boolean => {
     // PC
     return true;
   }
+};
+
+export const isFolder = (file: FileData): boolean => {
+  return file.mimeType === "application/vnd.google-apps.folder";
 };

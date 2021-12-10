@@ -19,7 +19,7 @@
     <div class="btns">
       <a
         class="common-btn repeat"
-        :class="{ active: isRepeatMode }"
+        :class="{ active: playMode == 1 }"
         @click="onClickRepeat()"
       >
         <span class="icon material-icons">repeat_one</span>
@@ -27,7 +27,7 @@
 
       <a
         class="common-btn shuffle"
-        :class="{ active: isShuffleMode }"
+        :class="{ active: playMode == 2 }"
         @click="onClickShuffle()"
       >
         <span class="icon material-icons">shuffle</span>
@@ -218,6 +218,8 @@ $color-white: #fff;
 
 <script lang="ts">
 import { Component, Emit, Vue } from "vue-property-decorator";
+import { appService } from "@/services/app-service";
+import { PlayMode } from "@/interface/interface";
 
 @Component
 export default class AudioPlayer extends Vue {
@@ -225,9 +227,8 @@ export default class AudioPlayer extends Vue {
   totalTime = 0;
   audioElm = document.createElement("audio");
   isPlaying = false;
-  isRepeatMode = false;
-  isShuffleMode = false;
   isLoading = false;
+  playMode = appService.getPlayMode();
 
   mounted(): void {
     //
@@ -299,16 +300,15 @@ export default class AudioPlayer extends Vue {
   }
 
   onClickRepeat(): void {
-    this.isRepeatMode = !this.isRepeatMode;
-    if (this.isRepeatMode) {
-      this.isShuffleMode = false;
-    }
+    const mode = PlayMode.Repeat;
+    this.playMode = mode;
+    appService.setPlayMode(mode);
   }
+
   onClickShuffle(): void {
-    this.isShuffleMode = !this.isShuffleMode;
-    if (this.isShuffleMode) {
-      this.isRepeatMode = false;
-    }
+    const mode = PlayMode.Shuffle;
+    this.playMode = mode;
+    appService.setPlayMode(mode);
   }
 
   @Emit()

@@ -45,15 +45,15 @@
     <div class="app-nav" v-if="isSignedIn">
       <div
         class="nav-tab"
-        @click="onClickTab('drive')"
-        :class="{ active: currentTab != 'playlist' }"
+        @click="onClickTab(1)"
+        :class="{ active: selectedTabIndex != 2 }"
       >
         <span class="text">Google Drive</span>
       </div>
       <div
         class="nav-tab"
-        @click="onClickTab('playlist')"
-        :class="{ active: currentTab != 'drive' }"
+        @click="onClickTab(2)"
+        :class="{ active: selectedTabIndex != 1 }"
       >
         <span class="text">Local Playlist</span>
       </div>
@@ -67,7 +67,7 @@
       </div>
 
       <!-- ドライブ -->
-      <div class="body-inner" :class="{ active: currentTab != 'playlist' }">
+      <div class="body-inner" :class="{ active: selectedTabIndex != 2 }">
         <div class="body-ctrl">
           <div class="search">
             <input
@@ -112,7 +112,10 @@
                         folder
                       </span>
                       <span v-else class="icon material-icons">audiotrack</span>
-                      <span>{{ file.name }}</span>
+                      <span>
+                        <template v-if="file.meta">メタ情報表示</template>
+                        <template v-else>{{ file.name }}</template>
+                      </span>
                     </div>
                   </td>
                   <td class="cell-size">{{ file.size | prettyBytes }}</td>
@@ -135,7 +138,7 @@
       </div>
 
       <!-- プレイリスト -->
-      <div class="body-inner" :class="{ active: currentTab != 'drive' }">
+      <div class="body-inner" :class="{ active: selectedTabIndex != 1 }">
         <div class="body-ctrl playlist">
           <a class="common-btn" @click="clearPlayList()">
             <span class="text">Remove All</span>
@@ -183,7 +186,7 @@
                         folder
                       </span>
                       <span v-else class="icon material-icons">audiotrack</span>
-                      <span>{{ file.name }}</span>
+                      <span>{{ getDispText(file) }}</span>
                     </div>
                   </td>
                   <td class="cell-size">{{ file.size | prettyBytes }}</td>
@@ -559,8 +562,11 @@ import { Component, Vue, Watch } from "vue-property-decorator";
 import draggable from "vuedraggable";
 import { Env } from "./env/env";
 import AudioPlayer from "./components/AudioPlayer.vue";
-import { isPC } from "./utils/util";
+import { isFolder, isPC } from "./utils/util";
 import jsmediatags from "jsmediatags";
+import { appService } from "./services/app-service";
+import { FileData, AudioMeta, PlayMode, TabIndex } from "@/interface/interface";
+import { audioService } from "./services/audio-service";
 
 const DISCOVERY_DOCS = [
   "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
@@ -572,16 +578,6 @@ const LS_KEY_PLAY_LIST = "ls-key-play-list";
 
 let gapi: any = null;
 
-interface File {
-  id: string;
-  name: string;
-  mimeType: string;
-  modifiedTime: string;
-  size?: number;
-  webContentLink?: string;
-  parents: string[];
-}
-
 @Component({
   components: {
     draggable,
@@ -592,17 +588,16 @@ export default class App extends Vue {
   isPC = isPC();
   initialized = false;
   isSignedIn = false;
-  files: File[] = [];
-  playListFiles: File[] = [];
+  files: FileData[] = [];
+  playListFiles: FileData[] = [];
   nextPageToken = "";
   parent = DEFAULT_PARENT;
   lastListRequest: Promise<void> | null = null;
   playId = "";
   searchWord = "";
   addingToPlayList = false;
-  currentTab: "drive" | "playlist" | "" = "";
+  selectedTabIndex = appService.getSelectedTabIndex();
   lastClickListType: "drive" | "playlist" = "drive";
-  googleOAuthAccessToken = ";";
 
   mounted(): void {
     gapi = (window as any).gapi;
@@ -647,49 +642,6 @@ export default class App extends Vue {
     });
   }
 
-  play(type: "next" | "prev"): void {
-    if (!this.playId) {
-      return;
-    }
-
-    // リピートの場合
-    if (this.audioPalyer.isRepeatMode) {
-      this.audioPalyer.replay();
-      return;
-    }
-
-    const targetList =
-      this.lastClickListType === "drive" ? this.files : this.playListFiles;
-
-    if (targetList.length === 0) {
-      return;
-    }
-
-    const targetFiles = targetList.filter((f) => !this.isFolder(f));
-    const currentIndex = targetList.findIndex((f) => f.id === this.playId) || 0;
-
-    let nextIndex = 0;
-    if (type === "prev") {
-      nextIndex = currentIndex - 1;
-      if (nextIndex < 0) {
-        nextIndex = targetFiles.length - 1;
-      }
-    } else {
-      if (this.audioPalyer.isShuffleMode) {
-        nextIndex = Math.floor(Math.random() * targetFiles.length);
-      } else {
-        nextIndex = currentIndex + 1;
-        if (nextIndex > targetFiles.length - 1) {
-          nextIndex = 0;
-        }
-      }
-    }
-
-    const nextFile = targetFiles[nextIndex];
-    this.playId = nextFile.id;
-    this.audioPalyer.play(nextFile.webContentLink);
-  }
-
   renderSignInButton(): void {
     gapi.signin2.render(this.$refs.googleSignInBtn, {
       scope: "profile email",
@@ -703,11 +655,15 @@ export default class App extends Vue {
   updateSigninStatus(isSignedIn: boolean): void {
     this.isSignedIn = isSignedIn;
     if (isSignedIn) {
-      this.googleOAuthAccessToken = gapi.auth2
+      const token = gapi.auth2
         .getAuthInstance()
         .currentUser.get()
         .getAuthResponse().access_token;
+
+      appService.setGoogleOAuthAccessToken(token);
+
       this.restorePlayList();
+      audioService.attachMetaToFiles(this.playListFiles);
     } else {
       this.files = [];
     }
@@ -747,6 +703,50 @@ export default class App extends Vue {
     }
   }
 
+  play(type: "next" | "prev"): void {
+    if (!this.playId) {
+      return;
+    }
+
+    // リピートの場合
+    if (appService.getPlayMode() == PlayMode.Repeat) {
+      this.audioPalyer.replay();
+      return;
+    }
+
+    const targetList =
+      this.lastClickListType === "drive" ? this.files : this.playListFiles;
+
+    if (targetList.length === 0) {
+      return;
+    }
+
+    const targetFiles = targetList.filter((f) => !isFolder(f));
+    const currentIndex = targetList.findIndex((f) => f.id === this.playId) || 0;
+
+    let nextIndex = 0;
+    if (type === "prev") {
+      nextIndex = currentIndex - 1;
+      if (nextIndex < 0) {
+        nextIndex = targetFiles.length - 1;
+      }
+    } else {
+      if (appService.getPlayMode() == PlayMode.Shuffle) {
+        // シャッフルの場合
+        nextIndex = Math.floor(Math.random() * targetFiles.length);
+      } else {
+        nextIndex = currentIndex + 1;
+        if (nextIndex > targetFiles.length - 1) {
+          nextIndex = 0;
+        }
+      }
+    }
+
+    const nextFile = targetFiles[nextIndex];
+    this.playId = nextFile.id;
+    this.audioPalyer.play(nextFile.webContentLink);
+  }
+
   listFiles(stateChanger: StateChanger): void {
     let query = `(mimeType = 'application/vnd.google-apps.folder' or mimeType contains 'audio/') and trashed = false`;
     if (this.searchWord) {
@@ -779,13 +779,6 @@ export default class App extends Vue {
             this.nextPageToken = "";
             stateChanger.complete();
           }
-
-          var files = response.result.files;
-          if (files && files.length > 0) {
-            //
-          } else {
-            // nofile
-          }
         },
         (err: Error) => {
           console.log(err);
@@ -808,8 +801,8 @@ export default class App extends Vue {
 
   async _loadFilesIncludeSubFolder(
     folderIds: string[] | null = null
-  ): Promise<File[]> {
-    const promise = new Promise<File[]>((resolve) => {
+  ): Promise<FileData[]> {
+    const promise = new Promise<FileData[]>((resolve) => {
       let query = `(mimeType = 'application/vnd.google-apps.folder' or mimeType contains 'audio/') and trashed = false`;
       if (folderIds && folderIds.length > 0) {
         query += " and (";
@@ -829,9 +822,9 @@ export default class App extends Vue {
         })
         .then(
           async (response: any) => {
-            const fIds = (response.result.files as File[]).reduce(
-              (acc: string[], f: File) => {
-                if (this.isFolder(f)) {
+            const fIds = (response.result.files as FileData[]).reduce(
+              (acc: string[], f: FileData) => {
+                if (isFolder(f)) {
                   acc.push(f.id);
                 }
                 return acc;
@@ -839,7 +832,7 @@ export default class App extends Vue {
               []
             );
 
-            let filesInFolder: File[] = [];
+            let filesInFolder: FileData[] = [];
             if (fIds.length > 0) {
               while (fIds.length > 0) {
                 const result = await this._loadFilesIncludeSubFolder(
@@ -848,8 +841,8 @@ export default class App extends Vue {
                 filesInFolder = filesInFolder.concat(result);
               }
             }
-            const filesInCurrent = (response.result.files as File[]).filter(
-              (f) => !this.isFolder(f)
+            const filesInCurrent = (response.result.files as FileData[]).filter(
+              (f) => !isFolder(f)
             );
 
             resolve(filesInFolder.concat(filesInCurrent));
@@ -886,8 +879,8 @@ export default class App extends Vue {
     });
   }
 
-  onClickRow(file: File, isPlayListRow = false): void {
-    if (this.isFolder(file)) {
+  onClickRow(file: FileData, isPlayListRow = false): void {
+    if (isFolder(file)) {
       this.$router.push({ path: `/${file.id}` });
     } else {
       this.lastClickListType = isPlayListRow ? "playlist" : "drive";
@@ -900,43 +893,28 @@ export default class App extends Vue {
 
           // TEST
           // get ID3 tag
-          // const url = `https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`;
-          // jsmediatags.Config.setRequestHeaders([
-          //   {
-          //     key: "Authorization",
-          //     value: `Bearer ${this.googleOAuthAccessToken}`,
-          //   },
-          // ]);
-
-          // jsmediatags.read(url, {
-          //   onSuccess: (tag: any) => {
-          //     console.log(tag);
-          //   },
-          //   onError: (error: any) => {
-          //     console.log(error);
-          //   },
-          // });
-
-          // play
+          audioService.updateTags([file]);
           this.audioPalyer.play(file.webContentLink);
         }
       }
     }
   }
 
-  onClickTab(type: "drive" | "playlist" | ""): void {
-    if (this.currentTab == type) {
-      this.currentTab = "";
+  onClickTab(idx: TabIndex): void {
+    if (this.selectedTabIndex == idx) {
+      this.selectedTabIndex = TabIndex.Both;
     } else {
-      this.currentTab = type;
+      this.selectedTabIndex = idx;
     }
+
+    appService.setSelectedTabIndex(this.selectedTabIndex);
   }
 
-  async addToPlayList(e: Event, file: File): Promise<void> {
+  async addToPlayList(e: Event, file: FileData): Promise<void> {
     e.stopPropagation();
     e.preventDefault();
 
-    if (this.isFolder(file)) {
+    if (isFolder(file)) {
       this.addingToPlayList = true;
       const files = await this.loadFilesIncludeSubFolder([file.id]).catch(
         () => []
@@ -958,7 +936,7 @@ export default class App extends Vue {
     this.savePlayList();
   }
 
-  removeFromPlayList(e: Event, file: File): void {
+  removeFromPlayList(e: Event, file: FileData): void {
     e.stopPropagation();
     e.preventDefault();
 
@@ -977,12 +955,44 @@ export default class App extends Vue {
 
   savePlayList(): void {
     const jsonStr = JSON.stringify(this.playListFiles);
-    window.localStorage.setItem(LS_KEY_PLAY_LIST, jsonStr);
+    localStorage.setItem(LS_KEY_PLAY_LIST, jsonStr);
   }
 
   restorePlayList(): void {
-    const jsonStr = window.localStorage.getItem(LS_KEY_PLAY_LIST) || "[]";
+    const jsonStr = localStorage.getItem(LS_KEY_PLAY_LIST) || "[]";
     this.playListFiles = JSON.parse(jsonStr);
+  }
+
+  updateDriveList() {
+    this.files.splice(0, 0);
+  }
+
+  updatePlayList() {
+    this.playListFiles.splice(0, 0);
+  }
+
+  getDispText(file: FileData) {
+    if (file.meta) {
+      let strs = [];
+
+      if (file.meta[1]) {
+        strs.push(file.meta[1]);
+      }
+      if (file.meta[3]) {
+        strs.push(file.meta[3]);
+
+        if (file.meta[4]) {
+          strs.push(file.meta[4]);
+        }
+      }
+      if (file.meta[2]) {
+        strs.push(file.meta[2]);
+      }
+
+      return strs.join(" / ");
+    } else {
+      return file.name;
+    }
   }
 
   @Watch("$route.params.id")
@@ -995,10 +1005,6 @@ export default class App extends Vue {
   onSearchWordChange(): void {
     this.searchWord = this.$route.params.searchWord || "";
     this.resetList();
-  }
-
-  isFolder(file: File): boolean {
-    return file.mimeType === "application/vnd.google-apps.folder";
   }
 
   get infiniteStateChanger(): StateChanger {
