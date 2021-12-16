@@ -104,13 +104,12 @@ class AudioService {
         this._playList.push(f);
       } else {
         // idが同じファイルがある場合はid以外の情報を更新する
-        this.updateFileData(currentFile, file);
+        this.updateFileData(currentFile, f);
       }
     });
 
     // タグ読み込み
     this.updateTags();
-
     appService.savePlayList(this._playList);
   }
 
@@ -286,7 +285,7 @@ class AudioService {
 
   updateFileData(currentFile: FileData, newFile: FileData) {
     currentFile.name = newFile.name;
-    currentFile.modifiedTime = newFile.name;
+    currentFile.modifiedTime = newFile.modifiedTime;
     currentFile.size = newFile.size;
     currentFile.parents = newFile.parents;
     currentFile.webContentLink = newFile.webContentLink;
