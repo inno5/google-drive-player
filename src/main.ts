@@ -6,14 +6,13 @@ import "./filters/smart-file-size-filter";
 import "./filters/time-filter";
 import FolderIcon from "vue-material-design-icons/Folder.vue";
 import AudiotrackIcon from "vue-material-design-icons/AudioVideo.vue";
-import { appService } from "./services/app-service";
+import Toasted from "vue-toasted";
 
 Vue.config.productionTip = false;
 Vue.use(InfiniteLoading);
+Vue.use(Toasted, { singleton: true });
 Vue.component("folder-icon", FolderIcon);
 Vue.component("audio-icon", AudiotrackIcon);
-
-appService.loadAudioMetas();
 
 new Vue({
   router,

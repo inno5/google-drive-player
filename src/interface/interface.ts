@@ -1,3 +1,5 @@
+export const DEFAULT_PARENT = "root";
+
 export enum PlayMode {
   Default = 0,
   Repeat = 1,
@@ -27,4 +29,10 @@ export enum TabIndex {
   Both = 0,
   PlaDriveylist = 1,
   Playlist = 2,
+}
+
+export enum DisplayMode {
+  TitleArtist = 0,
+  Full = 1,
+  FileName = 2,
 }

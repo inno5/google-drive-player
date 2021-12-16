@@ -1,4 +1,10 @@
-import { PlayMode, AudioMeta, TabIndex } from "@/interface/interface";
+import {
+  PlayMode,
+  AudioMeta,
+  TabIndex,
+  FileData,
+  DisplayMode,
+} from "@/interface/interface";
 
 /**
  * アプリ全般のデータを管理するサービス
@@ -6,13 +12,15 @@ import { PlayMode, AudioMeta, TabIndex } from "@/interface/interface";
 enum LSKey {
   AppSettings = "ls-key-app-setting",
   PlayMode = "ls-key-play-mode",
+  DIsplayMode = "ls-key-display-mode",
   SelectedTabIndex = "ls-key-selected-tab-index",
   AudioMetas = "ls-key-audio-metas",
+  PlayList = "ls-key-play-list",
 }
 
 class AppService {
   private googleOAuthAccessToken = "";
-  private audioMetas: { [key: string]: AudioMeta } = {};
+  // private audioMetas: { [key: string]: AudioMeta } = {};
 
   /**
    * OAuth info
@@ -37,6 +45,17 @@ class AppService {
   }
 
   /**
+   * display mode
+   */
+  getDisplayMode() {
+    return Number(localStorage.getItem(LSKey.DIsplayMode) || 0) as DisplayMode;
+  }
+
+  setDisplayMode(mode: DisplayMode) {
+    localStorage.setItem(LSKey.DIsplayMode, mode.toString());
+  }
+
+  /**
    * selected tab index
    */
   getSelectedTabIndex() {
@@ -50,27 +69,46 @@ class AppService {
   }
 
   /**
+   * play list
+   */
+  savePlayList(list: FileData[]): void {
+    const jsonStr = JSON.stringify(list);
+    localStorage.setItem(LSKey.PlayList, jsonStr);
+  }
+
+  getPlayList(): FileData[] {
+    const jsonStr = localStorage.getItem(LSKey.PlayList) || "[]";
+    return JSON.parse(jsonStr);
+  }
+
+  /**
    * audioMeta
    */
-  loadAudioMetas() {
-    const str = localStorage.getItem(LSKey.AudioMetas) || "{}";
-    this.audioMetas = JSON.parse(str);
+  getAudioMeta(id: string) {
+    const str = localStorage.getItem(`meta-${id}`);
+    if (str) {
+      return JSON.parse(str);
+    } else {
+      return null;
+    }
   }
 
-  saveAudioMetas() {
-    localStorage.setItem(LSKey.AudioMetas, JSON.stringify(this.audioMetas));
+  setAudioMeta(id: string, meta: AudioMeta) {
+    localStorage.setItem(`meta-${id}`, JSON.stringify(meta));
   }
 
-  getAudioMeta(key: string) {
-    return this.audioMetas[key] || null;
+  clearAudioMeta() {
+    for (let i = 0, len = localStorage.length; i < len; i++) {
+      const key = localStorage.key(i);
+      if (key && key.indexOf("meta-") == 0) {
+        localStorage.removeItem(key);
+        len--;
+      }
+    }
   }
 
-  setAudioMeta(key: string, meta: AudioMeta) {
-    return (this.audioMetas[key] = meta);
-  }
-
-  deleteAudioMeta(key: string) {
-    delete this.audioMetas[key];
+  clearAllData() {
+    localStorage.clear();
   }
 }
 

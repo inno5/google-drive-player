@@ -28,6 +28,7 @@
           @next="play('next')"
           @ended="play('next')"
           @search="searchList()"
+          @list="changeDisplayMode()"
         ></AudioPlayer>
       </div>
     </div>
@@ -55,7 +56,7 @@
         @click="onClickTab(2)"
         :class="{ active: selectedTabIndex != 1 }"
       >
-        <span class="text">Local Playlist</span>
+        <span class="text">Playlist</span>
       </div>
     </div>
 
@@ -73,7 +74,7 @@
             <input
               type="text"
               class="search-input"
-              placeholder="Search audio files"
+              placeholder="Search audio driveList"
               ref="searchInput"
               v-model="searchWord"
               @keydown="onKeyDownSearch($event)"
@@ -89,12 +90,12 @@
             <table class="file-list-table">
               <draggable
                 tag="tbody"
-                v-model="files"
+                v-model="driveList"
                 :delay="isPC ? 0 : 100"
                 :animation="200"
               >
                 <tr
-                  v-for="(file, index) in files"
+                  v-for="(file, index) in driveList"
                   :key="file.id"
                   :class="['tr-' + file.id, { playing: file.id == playId }]"
                 >
@@ -112,15 +113,12 @@
                         folder
                       </span>
                       <span v-else class="icon material-icons">audiotrack</span>
-                      <span>
-                        <template v-if="file.meta">メタ情報表示</template>
-                        <template v-else>{{ file.name }}</template>
-                      </span>
+                      <span>{{ file.name }}</span>
                     </div>
                   </td>
                   <td class="cell-size">{{ file.size | prettyBytes }}</td>
                   <td class="cell-ctrl">
-                    <a class="common-btn" @click="addToPlayList($event, file)">
+                    <a class="common-btn" @click="onClickAddToPlayList(file)">
                       <span class="icon material-icons">
                         add_circle_outline
                       </span>
@@ -139,17 +137,19 @@
 
       <!-- プレイリスト -->
       <div class="body-inner" :class="{ active: selectedTabIndex != 1 }">
-        <div class="body-ctrl playlist">
-          <a class="common-btn" @click="clearPlayList()">
-            <span class="text">Remove All</span>
-            <span class="icon material-icons">delete_outline</span>
-          </a>
+        <div class="body-ctrl">
+          <div class="playlist-ctrl">
+            <a class="common-btn" @click="onClickClearPlayList()">
+              <span class="text">Remove All</span>
+              <span class="icon material-icons">delete_outline</span>
+            </a>
+          </div>
         </div>
 
         <div class="body-list">
           <div class="body-list-inner" ref="playListContainer">
             <div
-              v-if="!playListFiles || playListFiles.length == 0"
+              v-if="!playList || playList.length == 0"
               class="infinite-status-prompt"
               style="
                 color: rgb(102, 102, 102);
@@ -163,12 +163,13 @@
             <table class="file-list-table table table-striped table-hover">
               <draggable
                 tag="tbody"
-                v-model="playListFiles"
+                v-model="playList"
                 :delay="isPC ? 0 : 100"
                 :animation="200"
+                @end="onEndDragPlayList($event)"
               >
                 <tr
-                  v-for="(file, index) in playListFiles"
+                  v-for="(file, index) in playList"
                   :key="file.id"
                   :class="['tr-' + file.id, { playing: file.id == playId }]"
                 >
@@ -193,7 +194,7 @@
                   <td class="cell-ctrl">
                     <a
                       class="common-btn"
-                      @click="removeFromPlayList($event, file)"
+                      @click="onClickRemoveFromPlayList(file)"
                     >
                       <span class="icon material-icons">delete_outline</span>
                     </a>
@@ -394,8 +395,8 @@ $color-black: #333;
         padding: 12px;
         box-sizing: border-box;
 
-        &.playlist {
-          padding-top: 12 + 4px;
+        .playlist-ctrl {
+          padding-top: 4px;
         }
 
         .search {
@@ -446,6 +447,7 @@ $color-black: #333;
           right: 0;
           left: 0;
           overflow-y: scroll;
+          padding-bottom: 24px;
         }
 
         .file-list-table {
@@ -460,12 +462,15 @@ $color-black: #333;
             }
 
             &.playing {
-              // background-color: rgba($color-main, 0.5);
               background-color: $color-main;
               color: $color-white;
               .cell-title {
                 font-weight: bold;
               }
+            }
+
+            &:hover td {
+              background: rgba($color-main, 0.1);
             }
           }
 
@@ -505,6 +510,7 @@ $color-black: #333;
             white-space: nowrap;
             text-align: right;
             padding: 0 8px;
+            color: rgba($color-black, 0.6);
           }
           .cell-ctrl {
             padding-right: 12px;
@@ -563,20 +569,25 @@ import draggable from "vuedraggable";
 import { Env } from "./env/env";
 import AudioPlayer from "./components/AudioPlayer.vue";
 import { isFolder, isPC } from "./utils/util";
-import jsmediatags from "jsmediatags";
 import { appService } from "./services/app-service";
-import { FileData, AudioMeta, PlayMode, TabIndex } from "@/interface/interface";
+import {
+  FileData,
+  PlayMode,
+  TabIndex,
+  DEFAULT_PARENT,
+  DisplayMode,
+} from "@/interface/interface";
 import { audioService } from "./services/audio-service";
+import { gapi } from "./services/gapi-service";
 
 const DISCOVERY_DOCS = [
   "https://www.googleapis.com/discovery/v1/apis/drive/v3/rest",
 ];
 const SCOPES = "https://www.googleapis.com/auth/drive.readonly";
 
-const DEFAULT_PARENT = "root";
-const LS_KEY_PLAY_LIST = "ls-key-play-list";
-
-let gapi: any = null;
+// const hoge = process.env.npm_package_version;
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const APP_VERSION = require("../package.json").version;
 
 @Component({
   components: {
@@ -588,8 +599,8 @@ export default class App extends Vue {
   isPC = isPC();
   initialized = false;
   isSignedIn = false;
-  files: FileData[] = [];
-  playListFiles: FileData[] = [];
+  driveList = audioService.driveList;
+  playList = audioService.playList;
   nextPageToken = "";
   parent = DEFAULT_PARENT;
   lastListRequest: Promise<void> | null = null;
@@ -600,8 +611,6 @@ export default class App extends Vue {
   lastClickListType: "drive" | "playlist" = "drive";
 
   mounted(): void {
-    gapi = (window as any).gapi;
-
     if (this.$route.params.id) {
       this.parent = this.$route.params.id;
     }
@@ -610,6 +619,7 @@ export default class App extends Vue {
       this.searchWord = this.$route.params.searchWord;
     }
 
+    this.driveList.splice(0, this.driveList.length);
     this.init();
   }
 
@@ -634,6 +644,8 @@ export default class App extends Vue {
               gapi.auth2.getAuthInstance().isSignedIn.get()
             );
             this.initialized = true;
+
+            audioService.updateTags();
           },
           (err: Error) => {
             console.log(err);
@@ -661,16 +673,13 @@ export default class App extends Vue {
         .getAuthResponse().access_token;
 
       appService.setGoogleOAuthAccessToken(token);
-
-      this.restorePlayList();
-      audioService.attachMetaToFiles(this.playListFiles);
     } else {
-      this.files = [];
+      this.clearDriveList();
     }
   }
 
   onClickHelp(): void {
-    alert("Google Drive Player\nv1.0.0");
+    alert(`Google Drive Player\n${APP_VERSION}`);
   }
 
   onClickSignout(): void {
@@ -678,12 +687,13 @@ export default class App extends Vue {
       .getAuthInstance()
       .signOut()
       .then(() => {
-        this.resetList();
+        this.isSignedIn = false;
+        this.clearDriveList();
+        appService.clearAllData();
         this.parent = DEFAULT_PARENT;
         if (this.$router.currentRoute.path != "/") {
           this.$router.push({ path: `/` });
         }
-        window.localStorage.removeItem(LS_KEY_PLAY_LIST);
       });
   }
 
@@ -715,7 +725,7 @@ export default class App extends Vue {
     }
 
     const targetList =
-      this.lastClickListType === "drive" ? this.files : this.playListFiles;
+      this.lastClickListType === "drive" ? this.driveList : this.playList;
 
     if (targetList.length === 0) {
       return;
@@ -747,126 +757,21 @@ export default class App extends Vue {
     this.audioPalyer.play(nextFile.webContentLink);
   }
 
-  listFiles(stateChanger: StateChanger): void {
-    let query = `(mimeType = 'application/vnd.google-apps.folder' or mimeType contains 'audio/') and trashed = false`;
-    if (this.searchWord) {
-      query += ` and name contains '${this.searchWord}'`;
-    } else {
-      query += ` and '${this.parent}' in parents`;
-    }
-
-    const req: Promise<any> = gapi.client.drive.files
-      .list({
-        pageSize: 100,
-        fields:
-          "nextPageToken, files(id, name, size, mimeType, parents, modifiedTime, webContentLink)",
-        pageToken: this.nextPageToken,
-        orderBy: "folder asc, name asc",
-        q: query,
-      })
-      .then(
-        (response: any) => {
-          if (req !== this.lastListRequest) {
-            return;
-          }
-
-          this.files = this.files.concat(response.result.files);
-          stateChanger.loaded();
-
-          if (response.result.nextPageToken) {
-            this.nextPageToken = response.result.nextPageToken;
-          } else {
-            this.nextPageToken = "";
-            stateChanger.complete();
-          }
-        },
-        (err: Error) => {
-          console.log(err);
-        }
-      );
-    this.lastListRequest = req;
-  }
-
-  async loadFilesIncludeSubFolder(folderIds: string[] | null = null) {
-    const result = await this._loadFilesIncludeSubFolder(folderIds);
-    result.sort((a, b) => {
-      if (a.parents[0] != b.parents[0]) {
-        return 1;
-      }
-
-      return parseInt(a.name) - parseInt(b.name);
-    });
-    return result;
-  }
-
-  async _loadFilesIncludeSubFolder(
-    folderIds: string[] | null = null
-  ): Promise<FileData[]> {
-    const promise = new Promise<FileData[]>((resolve) => {
-      let query = `(mimeType = 'application/vnd.google-apps.folder' or mimeType contains 'audio/') and trashed = false`;
-      if (folderIds && folderIds.length > 0) {
-        query += " and (";
-        query += folderIds.map((id) => `'${id}' in parents`).join(" or ");
-        query += ")";
-      } else {
-        query += ` and '${DEFAULT_PARENT}' in parents`;
-      }
-
-      gapi.client.drive.files
-        .list({
-          pageSize: 1000,
-          fields:
-            "nextPageToken, files(id, name, size, mimeType, parents, modifiedTime,webContentLink)",
-          orderBy: "folder",
-          q: query,
-        })
-        .then(
-          async (response: any) => {
-            const fIds = (response.result.files as FileData[]).reduce(
-              (acc: string[], f: FileData) => {
-                if (isFolder(f)) {
-                  acc.push(f.id);
-                }
-                return acc;
-              },
-              []
-            );
-
-            let filesInFolder: FileData[] = [];
-            if (fIds.length > 0) {
-              while (fIds.length > 0) {
-                const result = await this._loadFilesIncludeSubFolder(
-                  fIds.splice(0, 50)
-                ).catch(() => []);
-                filesInFolder = filesInFolder.concat(result);
-              }
-            }
-            const filesInCurrent = (response.result.files as FileData[]).filter(
-              (f) => !isFolder(f)
-            );
-
-            resolve(filesInFolder.concat(filesInCurrent));
-          },
-          () => {
-            resolve([]);
-          }
-        );
-    });
-
-    return promise;
-  }
-
-  infiniteHandler(stateChanger: StateChanger): void {
+  async infiniteHandler(stateChanger: StateChanger): Promise<void> {
     if (!this.isSignedIn) {
       return;
     }
-    this.listFiles(stateChanger);
+
+    await audioService.loadDriveList(
+      this.searchWord,
+      this.parent,
+      stateChanger
+    );
   }
 
-  resetList(): void {
-    this.files = [];
-    this.infiniteStateChanger.reset();
-    this.nextPageToken = "";
+  clearDriveList(): void {
+    this.infiniteStateChanger?.reset();
+    audioService.clearDriveList();
   }
 
   searchList(): void {
@@ -877,6 +782,34 @@ export default class App extends Vue {
         block: "center",
       });
     });
+  }
+
+  changeDisplayMode(): void {
+    if (this.playList.length == 0) {
+      return;
+    }
+
+    const current = appService.getDisplayMode();
+    let mes = "";
+
+    if (current == DisplayMode.TitleArtist) {
+      appService.setDisplayMode(DisplayMode.Full);
+      mes = "artist / album [track] - title";
+    } else if (current == DisplayMode.Full) {
+      appService.setDisplayMode(DisplayMode.FileName);
+      mes = "file name";
+    } else if (current == DisplayMode.FileName) {
+      appService.setDisplayMode(DisplayMode.TitleArtist);
+      mes = "artist - title";
+    } else {
+      return;
+    }
+    this.$toasted.show(mes, {
+      duration: 2500,
+      position: "bottom-center",
+    });
+
+    this.playList.splice(0, 0);
   }
 
   onClickRow(file: FileData, isPlayListRow = false): void {
@@ -890,14 +823,12 @@ export default class App extends Vue {
       } else {
         if (file.webContentLink) {
           this.playId = file.id;
-
-          // TEST
-          // get ID3 tag
-          audioService.updateTags([file]);
           this.audioPalyer.play(file.webContentLink);
         }
       }
     }
+
+    audioService.updateTags();
   }
 
   onClickTab(idx: TabIndex): void {
@@ -908,88 +839,77 @@ export default class App extends Vue {
     }
 
     appService.setSelectedTabIndex(this.selectedTabIndex);
-  }
 
-  async addToPlayList(e: Event, file: FileData): Promise<void> {
-    e.stopPropagation();
-    e.preventDefault();
-
-    if (isFolder(file)) {
-      this.addingToPlayList = true;
-      const files = await this.loadFilesIncludeSubFolder([file.id]).catch(
-        () => []
-      );
-      files.forEach((f) => {
-        const idx = this.playListFiles.findIndex((plf) => plf.id === f.id);
-        if (idx === -1) {
-          this.playListFiles.push(f);
-        }
-      });
-      this.addingToPlayList = false;
-    } else {
-      const idx = this.playListFiles.findIndex((plf) => plf.id === file.id);
-      if (idx === -1) {
-        this.playListFiles.push(file);
-      }
+    if (this.driveList.length == 0) {
+      const elm = this.$refs.infiniteLoading as InfiniteLoading;
+      this.infiniteHandler(elm.stateChanger);
     }
-
-    this.savePlayList();
   }
 
-  removeFromPlayList(e: Event, file: FileData): void {
-    e.stopPropagation();
-    e.preventDefault();
+  async onClickAddToPlayList(file: FileData): Promise<void> {
+    this.addingToPlayList = true;
+    await audioService.addToPlayList(file);
+    this.addingToPlayList = false;
+  }
 
-    const idx = this.playListFiles.findIndex((f) => f.id === file.id);
-    if (idx >= 0) {
-      this.playListFiles.splice(idx, 1);
+  onClickRemoveFromPlayList(file: FileData): void {
+    audioService.removeFromPlayList(file);
+  }
+
+  onClickClearPlayList(): void {
+    audioService.clearPlayList();
+  }
+
+  onEndDragPlayList(e: any) {
+    if (e.newIndex != e.oldIndex) {
+      appService.savePlayList(this.playList);
     }
-
-    this.savePlayList();
   }
 
-  clearPlayList(): void {
-    this.playListFiles = [];
-    this.savePlayList();
-  }
+  getDispText(file: FileData): string {
+    const meta = appService.getAudioMeta(file.id);
+    const currentDisplayMode = appService.getDisplayMode();
+    // 0: number; // modifiedTime to unix time ms
+    // 1: string; // tag-artist
+    // 2: string; // tag-title
+    // 3: string; // tag-album
+    // 4: string; // tag-track
 
-  savePlayList(): void {
-    const jsonStr = JSON.stringify(this.playListFiles);
-    localStorage.setItem(LS_KEY_PLAY_LIST, jsonStr);
-  }
+    if (
+      !meta ||
+      !meta[1] ||
+      !meta[2] ||
+      currentDisplayMode == DisplayMode.FileName
+    ) {
+      return file.name;
+    } else if (currentDisplayMode == DisplayMode.TitleArtist) {
+      return `${meta[2]} - ${meta[1]}`;
+    } else if (currentDisplayMode == DisplayMode.Full) {
+      let str = "";
 
-  restorePlayList(): void {
-    const jsonStr = localStorage.getItem(LS_KEY_PLAY_LIST) || "[]";
-    this.playListFiles = JSON.parse(jsonStr);
-  }
+      if (meta[1]) {
+        str += meta[1];
 
-  updateDriveList() {
-    this.files.splice(0, 0);
-  }
-
-  updatePlayList() {
-    this.playListFiles.splice(0, 0);
-  }
-
-  getDispText(file: FileData) {
-    if (file.meta) {
-      let strs = [];
-
-      if (file.meta[1]) {
-        strs.push(file.meta[1]);
-      }
-      if (file.meta[3]) {
-        strs.push(file.meta[3]);
-
-        if (file.meta[4]) {
-          strs.push(file.meta[4]);
+        if (meta[3]) {
+          str += " / ";
         }
       }
-      if (file.meta[2]) {
-        strs.push(file.meta[2]);
+
+      if (meta[3]) {
+        str += meta[3];
+
+        if (meta[4]) {
+          str += ` [${meta[4]}]`;
+        }
       }
 
-      return strs.join(" / ");
+      if (meta[1] || meta[3]) {
+        str += " - ";
+      }
+
+      str += meta[2];
+
+      return str;
     } else {
       return file.name;
     }
@@ -998,18 +918,22 @@ export default class App extends Vue {
   @Watch("$route.params.id")
   onParentChange(): void {
     this.parent = this.$route.params.id || DEFAULT_PARENT;
-    this.resetList();
+    this.clearDriveList();
   }
 
   @Watch("$route.params.searchWord")
   onSearchWordChange(): void {
     this.searchWord = this.$route.params.searchWord || "";
-    this.resetList();
+    this.clearDriveList();
   }
 
-  get infiniteStateChanger(): StateChanger {
+  get infiniteStateChanger(): StateChanger | null {
     const elm = this.$refs.infiniteLoading as InfiniteLoading;
-    return elm.stateChanger;
+    if (elm) {
+      return elm.stateChanger;
+    }
+
+    return null;
   }
 
   get audioPalyer(): AudioPlayer {

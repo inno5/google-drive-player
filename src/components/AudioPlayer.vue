@@ -48,7 +48,9 @@
         <span class="icon material-icons">fast_forward</span>
       </a>
 
-      <span class="common-btn-dummy dummy"></span>
+      <a class="common-btn list" @click="list()">
+        <span class="icon material-icons">list</span>
+      </a>
 
       <a class="common-btn search" @click="search()">
         <span class="icon material-icons">manage_search</span>
@@ -143,7 +145,7 @@ $color-white: #fff;
       margin: 0 8px;
     }
 
-    .dummy {
+    .list {
       margin-left: auto;
     }
 
@@ -328,6 +330,11 @@ export default class AudioPlayer extends Vue {
 
   @Emit()
   search(): void {
+    //
+  }
+
+  @Emit()
+  list(): void {
     //
   }
 }
