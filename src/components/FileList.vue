@@ -17,7 +17,7 @@
       </div>
     </div>
 
-    <div class="list-body">
+    <div class="list-body" :class="{ 'two-column': selectedTabIndex == 0 }">
       <div class="loading" v-if="addingToPlayList">
         <div class="spinner-border" role="status">
           <span class="visually-hidden">Loading...</span>
@@ -60,31 +60,36 @@
                   :key="file.id"
                   :class="['tr-' + file.id, { playing: file.id == playId }]"
                 >
-                  <td class="cell-no">
-                    {{ index }}
-                  </td>
-                  <td class="cell-title" @dblclick="onClickRow(file)">
-                    <div class="text">
-                      <span
-                        v-if="
-                          file.mimeType === 'application/vnd.google-apps.folder'
-                        "
-                        class="icon material-icons"
-                      >
-                        folder
-                      </span>
-                      <span v-else class="icon material-icons">audiotrack</span>
-                      <span>{{ file.name }}</span>
-                    </div>
-                  </td>
-                  <td class="cell-size">{{ file.size | prettyBytes }}</td>
-                  <td class="cell-ctrl">
-                    <a class="common-btn" @click="onClickAddToPlayList(file)">
-                      <span class="icon material-icons">
-                        add_circle_outline
-                      </span>
-                    </a>
-                  </td>
+                  <div class="tr-inner">
+                    <td class="cell-no">
+                      {{ index }}
+                    </td>
+                    <td class="cell-title" @dblclick="onClickRow(file)">
+                      <div class="text">
+                        <span
+                          v-if="
+                            file.mimeType ===
+                            'application/vnd.google-apps.folder'
+                          "
+                          class="icon material-icons"
+                        >
+                          folder
+                        </span>
+                        <span v-else class="icon material-icons">
+                          audiotrack
+                        </span>
+                        <span>{{ file.name }}</span>
+                      </div>
+                    </td>
+                    <td class="cell-size">{{ file.size | prettyBytes }}</td>
+                    <td class="cell-ctrl">
+                      <a class="common-btn" @click="onClickAddToPlayList(file)">
+                        <span class="icon material-icons">
+                          add_circle_outline
+                        </span>
+                      </a>
+                    </td>
+                  </div>
                 </tr>
               </draggable>
             </table>
@@ -134,32 +139,37 @@
                   :key="file.id"
                   :class="['tr-' + file.id, { playing: file.id == playId }]"
                 >
-                  <td class="cell-no">
-                    {{ index }}
-                  </td>
-                  <td class="cell-title" @dblclick="onClickRow(file, true)">
-                    <div class="text">
-                      <span
-                        v-if="
-                          file.mimeType === 'application/vnd.google-apps.folder'
-                        "
-                        class="icon material-icons"
+                  <div class="tr-inner">
+                    <td class="cell-no">
+                      {{ index }}
+                    </td>
+                    <td class="cell-title" @dblclick="onClickRow(file, true)">
+                      <div class="text">
+                        <span
+                          v-if="
+                            file.mimeType ===
+                            'application/vnd.google-apps.folder'
+                          "
+                          class="icon material-icons"
+                        >
+                          folder
+                        </span>
+                        <span v-else class="icon material-icons">
+                          audiotrack
+                        </span>
+                        <span>{{ getDispText(file) }}</span>
+                      </div>
+                    </td>
+                    <td class="cell-size">{{ file.size | prettyBytes }}</td>
+                    <td class="cell-ctrl">
+                      <a
+                        class="common-btn"
+                        @click="onClickRemoveFromPlayList(file)"
                       >
-                        folder
-                      </span>
-                      <span v-else class="icon material-icons">audiotrack</span>
-                      <span>{{ getDispText(file) }}</span>
-                    </div>
-                  </td>
-                  <td class="cell-size">{{ file.size | prettyBytes }}</td>
-                  <td class="cell-ctrl">
-                    <a
-                      class="common-btn"
-                      @click="onClickRemoveFromPlayList(file)"
-                    >
-                      <span class="icon material-icons">delete_outline</span>
-                    </a>
-                  </td>
+                        <span class="icon material-icons">delete_outline</span>
+                      </a>
+                    </td>
+                  </div>
                 </tr>
               </draggable>
             </table>
@@ -210,6 +220,17 @@
       &:active .text {
         opacity: 0.6;
       }
+
+      .text {
+        display: block;
+        max-width: $app-max-width / 2;
+      }
+
+      &:first-child {
+        .text {
+          margin-left: auto;
+        }
+      }
     }
   }
 
@@ -217,6 +238,26 @@
     position: relative;
     display: flex;
     height: 100%;
+
+    &.two-column {
+      .body-inner {
+        &:nth-child(1) {
+          .body-ctrl,
+          .tr-inner {
+            max-width: $app-max-width / 2 !important;
+            margin-right: 0 !important;
+          }
+        }
+
+        &:nth-child(2) {
+          .body-ctrl,
+          .tr-inner {
+            max-width: $app-max-width / 2 !important;
+            margin-left: 0 !important;
+          }
+        }
+      }
+    }
 
     .divider {
       display: none;
@@ -246,6 +287,9 @@
         align-items: center;
         justify-content: flex-end;
         min-height: 32px;
+        width: 100%;
+        max-width: $app-max-width;
+        margin: 0 auto;
         padding: 12px;
         box-sizing: border-box;
 
@@ -305,6 +349,7 @@
         }
 
         .file-list-table {
+          width: 100%;
           -webkit-user-select: none;
           -moz-user-select: none;
           -ms-user-select: none;
@@ -314,7 +359,9 @@
             &.sortable-ghost {
               background-color: rgba($color-main, 0.2);
             }
-
+            &:hover {
+              background: rgba($color-main, 0.1);
+            }
             &.playing {
               background-color: $color-main;
               color: $color-white;
@@ -323,8 +370,9 @@
               }
             }
 
-            &:hover td {
-              background: rgba($color-main, 0.1);
+            .tr-inner {
+              max-width: $app-max-width;
+              margin: 0 auto;
             }
           }
 
@@ -442,6 +490,9 @@ export default class FileList extends Vue {
   driveList = audioService.driveList;
   playList = audioService.playList;
   parent = DEFAULT_PARENT;
+  get selectedTabIndex(): TabIndex {
+    return appState.selectedTabIndex;
+  }
   get playId(): string {
     return appState.playId;
   }
@@ -449,10 +500,7 @@ export default class FileList extends Vue {
   created(): void {
     this.parent = this.$route.params.id || DEFAULT_PARENT;
     this.searchWord = this.$route.params.searchWord || "";
-  }
-
-  get selectedTabIndex(): TabIndex {
-    return appState.selectedTabIndex;
+    audioService.updateTags();
   }
 
   onClickTab(idx: TabIndex): void {

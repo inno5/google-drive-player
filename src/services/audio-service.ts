@@ -63,9 +63,6 @@ class AudioService {
             this._driveList.push(f);
           });
 
-          // タグ読み込み
-          this.updateTags();
-
           stateChanger.loaded();
 
           if (response.result.nextPageToken) {

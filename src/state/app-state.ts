@@ -117,6 +117,13 @@ class AppState {
   set lastClickListType(idx: TabIndex) {
     this._lastClickedListType = idx;
   }
+
+  /**
+   * クリア
+   */
+  clearLocalStorage() {
+    localStorage.clear();
+  }
 }
 
 export const appState = Vue.observable(new AppState());

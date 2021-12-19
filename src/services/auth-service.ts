@@ -56,7 +56,6 @@ class AuthService {
 
   private _updateSigninStatus(): void {
     const isSignedIn = this.isSignedIn;
-
     if (isSignedIn) {
       const token = gapi.auth2
         .getAuthInstance()
@@ -64,6 +63,7 @@ class AuthService {
         .getAuthResponse().access_token;
       this._token = token;
     } else {
+      appState.clearLocalStorage();
       this._token = "";
     }
 

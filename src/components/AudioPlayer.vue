@@ -261,7 +261,7 @@ export default class AudioPlayer extends Vue {
     document.removeEventListener("keydown", this.onKeyDown);
   }
 
-  onKeyDown(event: KeyboardEvent) {
+  onKeyDown(event: KeyboardEvent): void {
     if (event.key == " ") {
       if (this.isPlaying) {
         this.pause();
@@ -304,7 +304,7 @@ export default class AudioPlayer extends Vue {
     }
   }
 
-  onClickAudioBtn(type: "play" | "pause" | "next" | "prev") {
+  onClickAudioBtn(type: "play" | "pause" | "next" | "prev"): void {
     if (type == "play") {
       this.play();
     } else if (type == "pause") {
