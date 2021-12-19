@@ -1,9 +1,17 @@
 import jsmediatags from "jsmediatags";
-import { appService } from "./app-service";
 import { AudioMeta, DEFAULT_PARENT, FileData } from "@/interface/interface";
 import { isFolder } from "@/utils/util";
 import { gapi } from "./gapi-service";
 import { StateChanger } from "vue-infinite-loading";
+import { authService } from "./auth-service";
+import { appState } from "@/state/app-state";
+
+interface GApiResponse {
+  result: {
+    files: FileData[];
+    nextPageToken?: string;
+  };
+}
 
 interface TagResponce {
   tags: {
@@ -25,7 +33,7 @@ class AudioService {
     return this._driveList;
   }
   private nextPageToken = "";
-  private lastListRequest: Promise<void> | null = null;
+  private lastListRequest: Promise<GApiResponse> | null = null;
 
   loadDriveList(searchWord = "", parentId = "", stateChanger: StateChanger) {
     let query = `(mimeType = 'application/vnd.google-apps.folder' or mimeType contains 'audio/') and trashed = false`;
@@ -35,7 +43,7 @@ class AudioService {
       query += ` and '${parentId || DEFAULT_PARENT}' in parents`;
     }
 
-    const req: Promise<any> = gapi.client.drive.files
+    const req: Promise<GApiResponse> = gapi.client.drive.files
       .list({
         pageSize: 100,
         // https://developers.google.com/drive/api/v3/reference/files
@@ -46,7 +54,7 @@ class AudioService {
         q: query,
       })
       .then(
-        (response: any) => {
+        (response: GApiResponse) => {
           if (req !== this.lastListRequest) {
             return;
           }
@@ -84,7 +92,7 @@ class AudioService {
   /**
    * local playlist
    */
-  private _playList: FileData[] = appService.getPlayList();
+  private _playList: FileData[] = appState.loadPlayList();
 
   get playList() {
     return this._playList;
@@ -110,7 +118,7 @@ class AudioService {
 
     // タグ読み込み
     this.updateTags();
-    appService.savePlayList(this._playList);
+    appState.savePlayList(this._playList);
   }
 
   private async loadFilesIncludeSubFolder(folderIds: string[] | null = null) {
@@ -147,7 +155,7 @@ class AudioService {
           q: query,
         })
         .then(
-          async (response: any) => {
+          async (response: GApiResponse) => {
             const fIds = (response.result.files as FileData[]).reduce(
               (acc: string[], f: FileData) => {
                 if (isFolder(f)) {
@@ -186,13 +194,13 @@ class AudioService {
     const idx = this._playList.findIndex((f) => f.id === file.id);
     if (idx >= 0) {
       this._playList.splice(idx, 1);
-      appService.savePlayList(this._playList);
+      appState.savePlayList(this._playList);
     }
   }
 
   clearPlayList(): void {
     this._playList.splice(0, this._playList.length);
-    appService.savePlayList(this._playList);
+    appState.savePlayList(this._playList);
   }
 
   /**
@@ -207,7 +215,7 @@ class AudioService {
       jsmediatags.Config.setRequestHeaders([
         {
           key: "Authorization",
-          value: `Bearer ${appService.getGoogleOAuthAccessToken()}`,
+          value: `Bearer ${authService.getToken()}`,
         },
       ]);
 
@@ -241,7 +249,7 @@ class AudioService {
         tag.tags.track || "",
       ];
       targetFile.meta = meta;
-      appService.setAudioMeta(targetFile.id, meta);
+      this.setAudioMeta(targetFile.id, meta);
       this._playList.splice(0, 0);
     }
 
@@ -283,6 +291,37 @@ class AudioService {
     }
   }
 
+  /**
+   * audioMeta
+   */
+  getAudioMeta(id: string) {
+    const str = localStorage.getItem(`meta-${id}`);
+    if (str) {
+      return JSON.parse(str);
+    } else {
+      return null;
+    }
+  }
+
+  setAudioMeta(id: string, meta: AudioMeta) {
+    localStorage.setItem(`meta-${id}`, JSON.stringify(meta));
+  }
+
+  clearAudioMeta() {
+    for (let i = 0, len = localStorage.length; i < len; i++) {
+      const key = localStorage.key(i);
+      if (key && key.indexOf("meta-") == 0) {
+        localStorage.removeItem(key);
+        len--;
+      }
+    }
+  }
+
+  clearAllData() {
+    localStorage.clear();
+  }
+
+  // ファイルデータのコピー
   updateFileData(currentFile: FileData, newFile: FileData) {
     currentFile.name = newFile.name;
     currentFile.modifiedTime = newFile.modifiedTime;

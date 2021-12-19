@@ -27,7 +27,7 @@ export interface AudioMeta {
 
 export enum TabIndex {
   Both = 0,
-  PlaDriveylist = 1,
+  Drivelist = 1,
   Playlist = 2,
 }
 

@@ -1,5 +1,5 @@
 <template>
-  <div class="container">
+  <div class="audio-player">
     <div class="seek">
       <div class="time-current">{{ curretnTime | time }}</div>
       <input
@@ -20,7 +20,7 @@
       <a
         class="common-btn repeat"
         :class="{ active: playMode == 1 }"
-        @click="onClickRepeat()"
+        @click="onClickPlayMode(1)"
       >
         <span class="icon material-icons">repeat_one</span>
       </a>
@@ -28,27 +28,32 @@
       <a
         class="common-btn shuffle"
         :class="{ active: playMode == 2 }"
-        @click="onClickShuffle()"
+        @click="onClickPlayMode(2)"
       >
         <span class="icon material-icons">shuffle</span>
       </a>
 
-      <a class="common-btn prev" @click="prev()">
+      <a class="common-btn prev" @click="onClickAudioBtn('prev')">
         <span class="icon material-icons">fast_rewind</span>
       </a>
 
-      <a v-if="!isPlaying" class="common-btn play" @click="play()">
+      <a
+        v-if="!isPlaying"
+        class="common-btn play"
+        @click="onClickAudioBtn('play')"
+      >
         <span class="icon material-icons">play_arrow</span>
       </a>
-      <a v-else class="common-btn pause" @click="pause()">
+
+      <a v-else class="common-btn pause" @click="onClickAudioBtn('pause')">
         <span class="icon material-icons">pause</span>
       </a>
 
-      <a class="common-btn next" @click="next()">
+      <a class="common-btn next" @click="onClickAudioBtn('next')">
         <span class="icon material-icons">fast_forward</span>
       </a>
 
-      <a class="common-btn list" @click="list()">
+      <a class="common-btn list" @click="onClickDisplayMode">
         <span class="icon material-icons">list</span>
       </a>
 
@@ -62,7 +67,8 @@
 <style scoped lang="scss">
 $color-white: #fff;
 
-.container {
+.audio-player {
+  box-sizing: border-box;
   padding: 12px;
 
   .seek {
@@ -220,8 +226,14 @@ $color-white: #fff;
 
 <script lang="ts">
 import { Component, Emit, Vue } from "vue-property-decorator";
-import { appService } from "@/services/app-service";
-import { PlayMode } from "@/interface/interface";
+import {
+  DisplayMode,
+  FileData,
+  PlayMode,
+  TabIndex,
+} from "@/interface/interface";
+import { appState } from "@/state/app-state";
+import { audioService } from "@/services/audio-service";
 
 @Component
 export default class AudioPlayer extends Vue {
@@ -230,10 +242,11 @@ export default class AudioPlayer extends Vue {
   audioElm = document.createElement("audio");
   isPlaying = false;
   isLoading = false;
-  playMode = appService.getPlayMode();
+  get playMode(): PlayMode {
+    return appState.playMode;
+  }
 
   mounted(): void {
-    //
     this.audioElm.addEventListener("timeupdate", this.audioEventHandler);
     this.audioElm.addEventListener("loadedmetadata", this.audioEventHandler);
     this.audioElm.addEventListener("ended", this.audioEventHandler);
@@ -241,6 +254,30 @@ export default class AudioPlayer extends Vue {
     this.audioElm.addEventListener("progress", this.audioEventHandler);
     this.audioElm.addEventListener("loadstart", this.audioEventHandler);
     this.audioElm.addEventListener("loadeddata", this.audioEventHandler);
+    document.addEventListener("keydown", this.onKeyDown);
+  }
+
+  destroyed(): void {
+    document.removeEventListener("keydown", this.onKeyDown);
+  }
+
+  onKeyDown(event: KeyboardEvent) {
+    if (event.key == " ") {
+      if (this.isPlaying) {
+        this.pause();
+        this.$toasted.show("pause", {
+          duration: 2200,
+          position: "bottom-center",
+        });
+      } else {
+        if (this.play()) {
+          this.$toasted.show("play", {
+            duration: 2200,
+            position: "bottom-center",
+          });
+        }
+      }
+    }
   }
 
   audioEventHandler(e: Event): void {
@@ -267,13 +304,25 @@ export default class AudioPlayer extends Vue {
     }
   }
 
-  play(src = ""): void {
+  onClickAudioBtn(type: "play" | "pause" | "next" | "prev") {
+    if (type == "play") {
+      this.play();
+    } else if (type == "pause") {
+      this.pause();
+    } else if (type == "next") {
+      this.next();
+    } else if (type == "prev") {
+      this.prev();
+    }
+  }
+
+  play(src = ""): boolean {
     if (src) {
       this.audioElm.src = src;
     }
 
     if (!this.audioElm.src) {
-      return;
+      return false;
     }
 
     this.audioElm.play().then(
@@ -285,11 +334,70 @@ export default class AudioPlayer extends Vue {
       }
     );
     this.isPlaying = true;
+    return true;
   }
 
   pause(): void {
     this.audioElm.pause();
     this.isPlaying = false;
+  }
+
+  prev(): void {
+    const currentList = this.getCurrentList();
+    const currentId = appState.playId;
+
+    if (currentList.length == 0) {
+      return;
+    } else if (currentList.length == 1) {
+      this.replay();
+    }
+
+    const currentIdx = currentList.findIndex((f) => f.id == currentId) || 0;
+    let nextIdx = currentIdx - 1;
+    if (nextIdx < 0) {
+      nextIdx = currentList.length - 1;
+    }
+
+    const playFile = currentList[nextIdx];
+    appState.playId = playFile.id;
+    this.play(playFile.webContentLink);
+  }
+
+  next(): void {
+    const currentList = this.getCurrentList();
+    const currentId = appState.playId;
+    const currentIdx = currentList.findIndex((f) => f.id == currentId) || 0;
+
+    if (currentList.length == 0) {
+      return;
+    } else if (currentList.length == 1) {
+      this.replay();
+    }
+
+    let nextIdx = 0;
+    let playFile;
+    if (appState.playMode == PlayMode.Shuffle) {
+      const list = currentList.filter((f) => f.id != appState.playId);
+      nextIdx = Math.floor(Math.random() * list.length);
+      playFile = list[nextIdx];
+    } else {
+      nextIdx = currentIdx + 1;
+      if (nextIdx >= currentList.length) {
+        nextIdx = 0;
+      }
+      playFile = currentList[nextIdx];
+    }
+
+    appState.playId = playFile.id;
+    this.play(playFile.webContentLink);
+  }
+
+  ended(): void {
+    if (appState.playMode == PlayMode.Repeat) {
+      this.replay();
+    } else {
+      this.next();
+    }
   }
 
   replay(): void {
@@ -301,40 +409,46 @@ export default class AudioPlayer extends Vue {
     this.audioElm.currentTime = Number((e.target as HTMLInputElement).value);
   }
 
-  onClickRepeat(): void {
-    const mode = PlayMode.Repeat;
-    this.playMode = mode;
-    appService.setPlayMode(mode);
+  onClickPlayMode(mode: PlayMode): void {
+    if (appState.playMode == mode) {
+      appState.playMode = PlayMode.Default;
+    } else {
+      appState.playMode = mode;
+    }
   }
 
-  onClickShuffle(): void {
-    const mode = PlayMode.Shuffle;
-    this.playMode = mode;
-    appService.setPlayMode(mode);
+  private onClickDisplayMode(): void {
+    const currentMode = appState.displayMode;
+    let mes = "";
+    if (currentMode == DisplayMode.TitleArtist) {
+      appState.displayMode = DisplayMode.Full;
+      mes = "artist / album [track] - title";
+    } else if (currentMode == DisplayMode.Full) {
+      appState.displayMode = DisplayMode.FileName;
+      mes = "file name";
+    } else if (currentMode == DisplayMode.FileName) {
+      appState.displayMode = DisplayMode.TitleArtist;
+      mes = "title - artist";
+    }
+
+    audioService.playList.splice(0, 0);
+
+    this.$toasted.show(mes, {
+      duration: 2200,
+      position: "bottom-center",
+    });
+  }
+
+  private getCurrentList(): FileData[] {
+    if (appState.lastClickListType == TabIndex.Drivelist) {
+      return audioService.driveList;
+    } else {
+      return audioService.playList;
+    }
   }
 
   @Emit()
-  prev(): void {
-    //
-  }
-
-  @Emit()
-  next(): void {
-    //
-  }
-
-  @Emit()
-  ended(): void {
-    //
-  }
-
-  @Emit()
-  search(): void {
-    //
-  }
-
-  @Emit()
-  list(): void {
+  private search(): void {
     //
   }
 }
