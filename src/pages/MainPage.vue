@@ -22,7 +22,6 @@
   max-height: 100%;
   display: flex;
   flex-direction: column;
-  background-color: red;
 
   .audio-player-container {
     background-color: $color-main;

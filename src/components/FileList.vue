@@ -231,7 +231,7 @@
     .body-inner {
       display: none;
       flex-direction: column;
-      width: 50%;
+      width: 100%;
       box-sizing: border-box;
       &.active {
         display: flex;
