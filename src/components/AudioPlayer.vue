@@ -254,6 +254,7 @@ export default class AudioPlayer extends Vue {
     this.audioElm.addEventListener("progress", this.audioEventHandler);
     this.audioElm.addEventListener("loadstart", this.audioEventHandler);
     this.audioElm.addEventListener("loadeddata", this.audioEventHandler);
+    this.audioElm.addEventListener("error", this.audioEventHandler);
     document.addEventListener("keydown", this.onKeyDown);
   }
 
@@ -300,6 +301,12 @@ export default class AudioPlayer extends Vue {
     } else if (e.type === "loadstart") {
       this.isLoading = true;
     } else if (e.type === "loadeddata") {
+      this.isLoading = false;
+    } else if (e.type === "error") {
+      this.$toasted.error("このファイルは再生できません", {
+        duration: 2200,
+        position: "bottom-center",
+      });
       this.isLoading = false;
     }
   }

@@ -1,9 +1,9 @@
 {
   "name": "google-drive-player",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "scripts": {
-    "serve": "npm run set_env local; vue-cli-service serve",
+    "serve": "npm run set_env local; vue-cli-service serve  --port 8081",
     "deploy": "npm run set_env prod; yarn build; firebase deploy;",
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint",

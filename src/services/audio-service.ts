@@ -51,6 +51,8 @@ class AudioService {
           "nextPageToken, files(id, name, size, mimeType, parents, modifiedTime, webContentLink)",
         pageToken: this.nextPageToken,
         orderBy: "folder asc, name asc",
+        // includeItemsFromAllDrives: true,
+        // supportsAllDrives: true,
         q: query,
       })
       .then(
@@ -149,6 +151,8 @@ class AudioService {
           fields:
             "nextPageToken, files(id, name, size, mimeType, parents, modifiedTime,webContentLink)",
           orderBy: "folder",
+          // includeItemsFromAllDrives: true,
+          // supportsAllDrives: true
           q: query,
         })
         .then(
