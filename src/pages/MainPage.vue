@@ -61,7 +61,7 @@ export default class MainPage extends Vue {
   }
 
   onClickRow(file: FileData): void {
-    this.audioPlayer.play(file.webContentLink);
+    this.audioPlayer.play(file);
   }
 
   get audioPlayer(): AudioPlayer {

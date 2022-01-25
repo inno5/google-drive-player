@@ -234,6 +234,7 @@ import {
 } from "@/interface/interface";
 import { appState } from "@/state/app-state";
 import { audioService } from "@/services/audio-service";
+import { getDispText } from "@/utils/util";
 
 @Component
 export default class AudioPlayer extends Vue {
@@ -323,9 +324,9 @@ export default class AudioPlayer extends Vue {
     }
   }
 
-  play(src = ""): boolean {
-    if (src) {
-      this.audioElm.src = src;
+  play(fileData: FileData | null = null): boolean {
+    if (fileData && fileData.webContentLink) {
+      this.audioElm.src = fileData.webContentLink;
     }
 
     if (!this.audioElm.src) {
@@ -340,6 +341,12 @@ export default class AudioPlayer extends Vue {
         // 連続play時に起こるエラーを無視する
       }
     );
+
+    if (fileData) {
+      document.title = getDispText(fileData);
+      console.log(document.title);
+    }
+
     this.isPlaying = true;
     return true;
   }
@@ -367,7 +374,7 @@ export default class AudioPlayer extends Vue {
 
     const playFile = currentList[nextIdx];
     appState.playId = playFile.id;
-    this.play(playFile.webContentLink);
+    this.play(playFile);
   }
 
   next(): void {
@@ -396,7 +403,7 @@ export default class AudioPlayer extends Vue {
     }
 
     appState.playId = playFile.id;
-    this.play(playFile.webContentLink);
+    this.play(playFile);
   }
 
   ended(): void {

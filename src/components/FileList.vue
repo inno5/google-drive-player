@@ -475,15 +475,11 @@ import "reset.css";
 import { Component, Vue, Watch } from "vue-property-decorator";
 import { appState } from "@/state/app-state";
 import draggable from "vuedraggable";
-import {
-  DEFAULT_PARENT,
-  DisplayMode,
-  FileData,
-  TabIndex,
-} from "@/interface/interface";
+import { DEFAULT_PARENT, FileData, TabIndex } from "@/interface/interface";
 import { isFolder, isPC } from "@/utils/util";
 import InfiniteLoading, { StateChanger } from "vue-infinite-loading";
 import { audioService } from "@/services/audio-service";
+import { getDispText } from "@/utils/util";
 
 @Component({
   components: {
@@ -598,44 +594,7 @@ export default class FileList extends Vue {
   }
 
   getDispText(file: FileData): string {
-    const meta = audioService.getAudioMeta(file.id);
-    const currentDisplayMode = appState.displayMode;
-    // 0: number; // modifiedTime to unix time ms
-    // 1: string; // tag-artist
-    // 2: string; // tag-title
-    // 3: string; // tag-album
-    // 4: string; // tag-track
-    if (
-      !meta ||
-      !meta[1] ||
-      !meta[2] ||
-      currentDisplayMode == DisplayMode.FileName
-    ) {
-      return file.name;
-    } else if (currentDisplayMode == DisplayMode.TitleArtist) {
-      return `${meta[2]} - ${meta[1]}`;
-    } else if (currentDisplayMode == DisplayMode.Full) {
-      let str = "";
-      if (meta[1]) {
-        str += meta[1];
-        if (meta[3]) {
-          str += " / ";
-        }
-      }
-      if (meta[3]) {
-        str += meta[3];
-        if (meta[4]) {
-          str += ` [${meta[4]}]`;
-        }
-      }
-      if (meta[1] || meta[3]) {
-        str += " - ";
-      }
-      str += meta[2];
-      return str;
-    } else {
-      return file.name;
-    }
+    return getDispText(file);
   }
 
   // パラメータが変わったらドライブのリストを再読み込み
