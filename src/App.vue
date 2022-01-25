@@ -28,6 +28,10 @@ button {
 }
 </style>
 
+<style lang="scss">
+@import "@/styles/_tooltip";
+</style>
+
 <style lang="scss" scoped>
 @import "/styles/_variables";
 .app {

@@ -36,6 +36,9 @@ class AudioService {
   private lastListRequest: Promise<GApiResponse> | null = null;
 
   loadDriveList(searchWord = "", parentId = "", stateChanger: StateChanger) {
+    searchWord = searchWord.replaceAll("'", "\\'");
+    searchWord = searchWord.replaceAll("\\", "\\\\");
+
     let query = `(mimeType = 'application/vnd.google-apps.folder' or mimeType contains 'audio/') and trashed = false`;
     if (searchWord) {
       query += ` and name contains '${searchWord}'`;

@@ -60,7 +60,7 @@
                   :key="file.id"
                   :class="['tr-' + file.id, { playing: file.id == playId }]"
                 >
-                  <div class="tr-inner">
+                  <div class="tr-inner" v-tooltip="file.name">
                     <td class="cell-no">
                       {{ index }}
                     </td>
@@ -139,7 +139,7 @@
                   :key="file.id"
                   :class="['tr-' + file.id, { playing: file.id == playId }]"
                 >
-                  <div class="tr-inner">
+                  <div class="tr-inner" v-tooltip="getDispText(file)">
                     <td class="cell-no">
                       {{ index }}
                     </td>
@@ -187,6 +187,7 @@
 
 <style lang="scss" scoped>
 @import "@/styles/_variables";
+
 .file-list {
   display: flex;
   flex-direction: column;
@@ -243,17 +244,23 @@
       .body-inner {
         &:nth-child(1) {
           .body-ctrl,
+          .infinite-loading-container,
+          .infinite-status-prompt,
           .tr-inner {
             max-width: $app-max-width / 2 !important;
             margin-right: 0 !important;
+            margin-left: auto;
           }
         }
 
         &:nth-child(2) {
           .body-ctrl,
+          .infinite-loading-container,
+          .infinite-status-prompt,
           .tr-inner {
             max-width: $app-max-width / 2 !important;
             margin-left: 0 !important;
+            margin-right: auto;
           }
         }
       }
@@ -544,8 +551,9 @@ export default class FileList extends Vue {
             this.$router.push({ path: `/` });
           }
         } else {
+          const newSearchWord = encodeURIComponent(this.searchInputElm.value);
           this.searchInputElm.blur();
-          this.$router.push({ path: `/search/${this.searchInputElm.value}` });
+          this.$router.push({ path: `/search/${newSearchWord}` });
         }
       }
     }

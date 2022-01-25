@@ -8,10 +8,12 @@ import FolderIcon from "vue-material-design-icons/Folder.vue";
 import AudiotrackIcon from "vue-material-design-icons/AudioVideo.vue";
 import Toasted from "vue-toasted";
 import { authService } from "./services/auth-service";
+import VToolTip from "v-tooltip";
 
 Vue.config.productionTip = false;
 Vue.use(InfiniteLoading);
 Vue.use(Toasted, { singleton: true });
+Vue.use(VToolTip)
 Vue.component("folder-icon", FolderIcon);
 Vue.component("audio-icon", AudiotrackIcon);
 
