@@ -326,7 +326,11 @@ export default class AudioPlayer extends Vue {
 
   play(fileData: FileData | null = null): boolean {
     if (fileData && fileData.webContentLink) {
-      this.audioElm.src = fileData.webContentLink;
+      // webContentLinkがそのままだとなぜかアクセスできなくなったのでURLの一部を置換し暫定処置
+      this.audioElm.src = fileData.webContentLink.replace(
+        "/uc?id=",
+        "/u/1/uc?id="
+      );
     }
 
     if (!this.audioElm.src) {
