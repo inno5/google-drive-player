@@ -1,10 +1,18 @@
 <template>
   <div class="page">
     <div class="audio-player-container">
-      <audio-player class="audio-player" ref="audioPlayer"></audio-player>
+      <audio-player
+        class="audio-player"
+        ref="audioPlayer"
+        @clickSearch="onClickSearch"
+      ></audio-player>
     </div>
     <div class="file-list-container">
-      <file-list class="file-list" @clickRow="onClickRow"></file-list>
+      <file-list
+        class="file-list"
+        ref="fileList"
+        @clickRow="onClickRow"
+      ></file-list>
     </div>
   </div>
 </template>
@@ -64,8 +72,16 @@ export default class MainPage extends Vue {
     this.audioPlayer.play(file);
   }
 
+  onClickSearch(): void {
+    this.fileList.scrollIntoViewTheTrack();
+  }
+
   get audioPlayer(): AudioPlayer {
     return this.$refs.audioPlayer as AudioPlayer;
+  }
+
+  get fileList(): FileList {
+    return this.$refs.fileList as FileList;
   }
 }
 </script>

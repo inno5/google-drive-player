@@ -465,7 +465,7 @@ export default class AudioPlayer extends Vue {
     }
   }
 
-  @Emit()
+  @Emit("clickSearch")
   private search(): void {
     //
   }

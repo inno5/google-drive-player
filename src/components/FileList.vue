@@ -629,5 +629,16 @@ export default class FileList extends Vue {
     const elm = this.$refs.searchInput as HTMLInputElement;
     return elm;
   }
+
+  // 再生中のトラックを見える位置に
+  scrollIntoViewTheTrack(): void {
+    const elms = document.querySelectorAll("tr.playing");
+    elms.forEach((elm) => {
+      elm.scrollIntoView({
+        behavior: "auto",
+        block: "center",
+      });
+    });
+  }
 }
 </script>
