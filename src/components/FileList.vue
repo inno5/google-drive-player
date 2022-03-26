@@ -18,12 +18,6 @@
     </div>
 
     <div class="list-body" :class="{ 'two-column': selectedTabIndex == 0 }">
-      <div class="loading" v-if="addingToPlayList">
-        <div class="spinner-border" role="status">
-          <span class="visually-hidden">Loading...</span>
-        </div>
-      </div>
-
       <!-- ドライブ -->
       <div
         class="body-inner"
@@ -177,10 +171,11 @@
         </div>
       </div>
 
-      <div class="divider" ref="dividerElm" draggable="true"></div>
-      <!-- @dragstart="dividerDragHandler($event)"
-        @drag="dividerDragHandler($event)"
-        @dragend="dividerDragHandler($event)" -->
+      <div class="loading" v-if="addingToPlayList">
+        <div class="spinner-border" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -264,16 +259,6 @@
           }
         }
       }
-    }
-
-    .divider {
-      display: none;
-      // position: absolute;
-      // left: calc(50% - 6px);
-      // width: 12px;
-      // height: 100%;
-      // cursor: col-resize;
-      // background-color: red;
     }
 
     .body-inner {
@@ -568,22 +553,6 @@ export default class FileList extends Vue {
   onClickClearPlayList(): void {
     audioService.clearPlayList();
   }
-
-  // dragStartX = 0;
-  // dividerDragHandler(event: DragEvent): void {
-  //   if (event.type == "dragstart") {
-  //     this.dragStartX = event.screenX;
-  //     console.log(Math.random());
-  //   } else {
-  //     const moveX = event.screenX - this.dragStartX;
-  //     (
-  //       this.$refs.driveListElm as HTMLElement
-  //     ).style.width = `calc(50% + ${moveX}px)`;
-  //     (
-  //       this.$refs.dividerElm as HTMLElement
-  //     ).style.left = `calc(50% - 6px + ${moveX}px)`;
-  //   }
-  // }
 
   async infiniteHandler(stateChanger: StateChanger): Promise<void> {
     await audioService.loadDriveList(
