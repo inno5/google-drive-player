@@ -308,6 +308,8 @@ export default class AudioPlayer extends Vue {
         duration: 2200,
         position: "bottom-center",
       });
+      // 再生できない場合は直接ドライブ上で開く
+      window.open(this.audioElm.src, "_blank");
       this.isLoading = false;
     }
   }
