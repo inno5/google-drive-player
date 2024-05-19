@@ -1,6 +1,6 @@
 {
   "name": "google-drive-player",
-  "version": "1.2.4",
+  "version": "1.2.6",
   "private": true,
   "scripts": {
     "serve": "npm run set_env local; vue-cli-service serve  --port 8081",

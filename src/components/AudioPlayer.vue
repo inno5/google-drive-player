@@ -235,6 +235,7 @@ import {
 import { appState } from "@/state/app-state";
 import { audioService } from "@/services/audio-service";
 import { getDispText } from "@/utils/util";
+import { authService } from "@/services/auth-service";
 
 @Component
 export default class AudioPlayer extends Vue {
@@ -263,7 +264,7 @@ export default class AudioPlayer extends Vue {
     document.removeEventListener("keydown", this.onKeyDown);
   }
 
-  onKeyDown(event: KeyboardEvent): void {
+  async onKeyDown(event: KeyboardEvent): Promise<void> {
     if (event.key == " ") {
       if (this.isPlaying) {
         this.pause();
@@ -272,7 +273,7 @@ export default class AudioPlayer extends Vue {
           position: "bottom-center",
         });
       } else {
-        if (this.play()) {
+        if (await this.play()) {
           this.$toasted.show("play", {
             duration: 2200,
             position: "bottom-center",
@@ -294,22 +295,24 @@ export default class AudioPlayer extends Vue {
       (this.$refs.rangeInput as HTMLInputElement).style.backgroundSize =
         "0 100%";
     } else if (e.type === "progress") {
-      this.isLoading = false;
+      // this.isLoading = false;
       const loadedLength = this.audioElm.buffered.end(0);
       const percent = (loadedLength / this.audioElm.duration) * 100 + "% 100%";
       (this.$refs.rangeInput as HTMLInputElement).style.backgroundSize =
         percent;
     } else if (e.type === "loadstart") {
-      this.isLoading = true;
+      // this.isLoading = true;
     } else if (e.type === "loadeddata") {
-      this.isLoading = false;
+      // this.isLoading = false;
+      this.audioElm.play();
     } else if (e.type === "error") {
       this.$toasted.error("このファイルは再生できません", {
         duration: 2200,
         position: "bottom-center",
       });
+
       // 再生できない場合は直接ドライブ上で開く
-      window.open(this.audioElm.src, "_blank");
+      // window.open(this.audioElm.src, "_blank");
       this.isLoading = false;
     }
   }
@@ -326,16 +329,38 @@ export default class AudioPlayer extends Vue {
     }
   }
 
-  play(fileData: FileData | null = null): boolean {
-    if (fileData && fileData.webContentLink) {
-      // webContentLinkがそのままだとなぜかアクセスできなくなったのでURLの一部を置換し暫定処置
-      // this.audioElm.src = fileData.webContentLink.replace(
-      //   "/uc?id=",
-      //   "/u/1/uc?id="
-      // );
+  abortController: AbortController | null = null;
+  async play(fileData: FileData | null = null): Promise<boolean> {
+    if (this.abortController) {
+      this.abortController.abort("abort for load next data.");
+    }
 
-      // webContentLinkの仕様が戻ったみたい
-      this.audioElm.src = fileData.webContentLink;
+    if (fileData) {
+      const url = `https://www.googleapis.com/drive/v3/files/${fileData.id}?alt=media`;
+      const abortController = new AbortController();
+      this.abortController = abortController;
+      this.isLoading = true;
+
+      const res = await fetch(url, {
+        signal: abortController.signal,
+        headers: {
+          Authorization: `Bearer ${authService.getToken()}`,
+        },
+      }).catch((e) => {
+        console.log("load error:  ", e);
+        return null;
+      });
+
+      this.isLoading = false;
+      this.abortController = null;
+
+      if (!res) {
+        return false;
+      }
+
+      let blob = await new Response(res.body).blob();
+      var blobUrl = URL.createObjectURL(blob);
+      this.audioElm.src = blobUrl;
     }
 
     if (!this.audioElm.src) {
@@ -353,7 +378,6 @@ export default class AudioPlayer extends Vue {
 
     if (fileData) {
       document.title = getDispText(fileData);
-      console.log(document.title);
     }
 
     this.isPlaying = true;
@@ -440,7 +464,7 @@ export default class AudioPlayer extends Vue {
     }
   }
 
-  private onClickDisplayMode(): void {
+  onClickDisplayMode(): void {
     const currentMode = appState.displayMode;
     let mes = "";
     if (currentMode == DisplayMode.TitleArtist) {
