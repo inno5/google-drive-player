@@ -358,8 +358,10 @@ export default class AudioPlayer extends Vue {
         return false;
       }
 
-      let blob = await new Response(res.body).blob();
+      const blob = await res.blob();
       var blobUrl = URL.createObjectURL(blob);
+
+      console.log(blobUrl);
       this.audioElm.src = blobUrl;
     }
 
