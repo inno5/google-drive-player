@@ -33,6 +33,7 @@ function setup(children: DriveItem[] = []) {
     Promise.resolve({ items: children, nextPageToken: null }),
   );
   const api = {
+    downloadFile: vi.fn<DriveApi["downloadFile"]>(),
     listChildren,
     listFolder: vi.fn<DriveApi["listFolder"]>(),
     search: vi.fn<DriveApi["search"]>(),

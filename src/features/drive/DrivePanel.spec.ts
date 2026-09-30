@@ -1,5 +1,5 @@
 import { mount } from "@vue/test-utils";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import DrivePanel from "./DrivePanel.vue";
 import type { DriveItem } from "./drive-types";
 import { SortableListStub } from "@/shared/ui/sortable-list-stub";
@@ -115,5 +115,18 @@ describe("DrivePanel", () => {
     expect(
       factory({ items: [], hasLoaded: false }).get(".list-footer").text(),
     ).toBe("");
+  });
+
+  it("scrollToken が変わったら、再生中の行までスクロールする", async () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    const wrapper = factory({ playingId: "s1", scrollToken: 0 });
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    await wrapper.setProps({ scrollToken: 1 });
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      behavior: "auto",
+      block: "center",
+    });
   });
 });

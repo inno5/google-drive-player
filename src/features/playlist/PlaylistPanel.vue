@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useTemplateRef, watch } from "vue";
 import SortableList from "@/shared/ui/SortableList.vue";
 import TrackRow from "@/shared/ui/TrackRow.vue";
 import type { PlaylistItem } from "./playlist-storage";
@@ -7,12 +8,25 @@ const {
   items,
   playingId = "",
   adding = null,
+  scrollToken = 0,
 } = defineProps<{
   items: PlaylistItem[];
   playingId?: string;
   /** フォルダの中身を集めている間だけ渡す */
   adding?: { count: number } | null;
+  /** 値が変わるたびに、再生中の行を画面の中央までスクロールする */
+  scrollToken?: number;
 }>();
+
+const listElement = useTemplateRef<HTMLElement>("list");
+watch(
+  () => scrollToken,
+  () => {
+    listElement.value
+      ?.querySelector(".track-row.playing")
+      ?.scrollIntoView({ behavior: "auto", block: "center" });
+  },
+);
 
 const emit = defineEmits<{
   activate: [item: PlaylistItem];
@@ -32,7 +46,7 @@ const emit = defineEmits<{
       </button>
     </div>
 
-    <div class="list">
+    <div ref="list" class="list">
       <p v-if="items.length === 0" class="empty">No data :)</p>
       <SortableList
         :model-value="items"

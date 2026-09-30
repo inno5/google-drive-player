@@ -1,9 +1,33 @@
 <script setup lang="ts">
+import { watch } from "vue";
 import { useAuthStore } from "@/features/auth";
+import { usePlayerStore } from "@/features/player";
 import AppToast from "@/shared/ui/AppToast.vue";
 import AppHeader from "./AppHeader.vue";
 
 const auth = useAuthStore();
+const player = usePlayerStore();
+
+const APP_TITLE = "Google Drive Player";
+
+// 再生中の曲名をページのタイトルにする
+watch(
+  () => player.current,
+  (current) => {
+    document.title = current ? current.name : APP_TITLE;
+  },
+  { immediate: true },
+);
+
+// サインアウトしたら再生を止める
+watch(
+  () => auth.status,
+  (status) => {
+    if (status === "signedOut") {
+      player.stop();
+    }
+  },
+);
 </script>
 
 <template>

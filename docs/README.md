@@ -10,6 +10,7 @@ google-drive-player の設計・方針ドキュメント置き場。
 | [04-ios-auth-persistence.md](./04-ios-auth-persistence.md) | iOS「ホーム画面に追加」時の認証永続化の検証計画 |
 | [05-step2-drive.md](./05-step2-drive.md) | ステップ 2（Drive の一覧・検索）の範囲・設計・完了条件 |
 | [06-playlist.md](./06-playlist.md) | ステップ 3（プレイリスト）と、一覧画面全体（タブ切り替え・行の操作）の設計 |
+| [07-player.md](./07-player.md) | ステップ 4（再生）の範囲・設計・完了条件 |
 
 ## 運用ルール
 

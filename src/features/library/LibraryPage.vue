@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch } from "vue";
+import { ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
   DrivePanel,
@@ -8,7 +8,15 @@ import {
   useDriveStore,
 } from "@/features/drive";
 import type { DriveItem } from "@/features/drive";
+import {
+  PlayerBar,
+  useMediaSession,
+  usePlayPauseKey,
+  usePlayerStore,
+} from "@/features/player";
 import { PlaylistPanel, usePlaylistStore } from "@/features/playlist";
+import type { PlaylistItem } from "@/features/playlist";
+import { createGetItems } from "./play-sources";
 import ViewTabs from "./ViewTabs.vue";
 import { useViewStore } from "./view-store";
 
@@ -16,6 +24,7 @@ const route = useRoute();
 const router = useRouter();
 const drive = useDriveStore();
 const playlist = usePlaylistStore();
+const player = usePlayerStore();
 const viewStore = useViewStore();
 
 // URL が正。ルートが変わったら、その内容を読み込む
@@ -44,16 +53,52 @@ function onSearch(word: string): void {
   }
 }
 
-function onActivate(item: DriveItem): void {
+// 次・前の曲は、再生元の一覧の「今の並び」から選ぶ
+player.configure({
+  getItems: createGetItems({
+    drive: () => drive.items,
+    playlist: () => playlist.items,
+  }),
+});
+usePlayPauseKey(player);
+useMediaSession(player, () =>
+  player.current ? { title: player.current.name } : null,
+);
+
+/** 値を増やすたびに、両方の一覧が再生中の行までスクロールする */
+const scrollToken = ref(0);
+
+function onActivateDrive(item: DriveItem): void {
   if (isFolder(item)) {
     void router.push({ name: "folder", params: { id: item.id } });
+  } else {
+    void player.play(item, "drive");
   }
-  // 再生はステップ 4
+}
+
+function onActivatePlaylist(item: PlaylistItem): void {
+  void player.play(item, "playlist");
 }
 </script>
 
 <template>
   <div class="library">
+    <div class="player">
+      <PlayerBar
+        :status="player.status"
+        :current-time="player.currentTime"
+        :duration="player.duration"
+        :loaded-ratio="player.loadedRatio"
+        :play-mode="player.playMode"
+        @toggle="player.toggle()"
+        @seek="player.seek"
+        @restart="player.restart()"
+        @prev="player.prev()"
+        @next="player.next()"
+        @set-play-mode="player.setPlayMode"
+        @locate="scrollToken += 1"
+      />
+    </div>
     <ViewTabs :view="viewStore.view" @select="viewStore.select" />
     <div class="panes" :class="{ 'two-column': viewStore.view === 'both' }">
       <section v-show="viewStore.view !== 'playlist'" class="pane pane-drive">
@@ -66,8 +111,10 @@ function onActivate(item: DriveItem): void {
             :has-loaded="drive.hasLoaded"
             :query="drive.mode === 'search' ? drive.query : ''"
             :can-add="playlist.adding === null"
+            :playing-id="player.current?.id ?? ''"
+            :scroll-token="scrollToken"
             @search="onSearch"
-            @activate="onActivate"
+            @activate="onActivateDrive"
             @add="playlist.add"
             @reorder="drive.reorder"
             @load-more="drive.loadMore()"
@@ -80,6 +127,9 @@ function onActivate(item: DriveItem): void {
           <PlaylistPanel
             :items="playlist.items"
             :adding="playlist.adding"
+            :playing-id="player.current?.id ?? ''"
+            :scroll-token="scrollToken"
+            @activate="onActivatePlaylist"
             @remove="playlist.remove($event.id)"
             @reorder="playlist.reorder"
             @clear="playlist.clear()"
@@ -97,6 +147,11 @@ function onActivate(item: DriveItem): void {
   inset: 0;
   display: flex;
   flex-direction: column;
+}
+.player {
+  flex: none;
+  background-color: var(--color-main);
+  color: var(--color-white);
 }
 .panes {
   display: flex;

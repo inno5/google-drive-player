@@ -185,4 +185,67 @@ describe("drive-api", () => {
     fetchFn.mockRejectedValueOnce(abort);
     await expect(api.listFolder("root")).rejects.toBe(abort);
   });
+
+  describe("downloadFile", () => {
+    const bytes = new Uint8Array([1, 2, 3, 4]);
+
+    it("ファイルの中身を Bearer つきで取得し、Blob にする", async () => {
+      const { api, fetchFn } = setup();
+      fetchFn.mockResolvedValueOnce(
+        new Response(bytes, {
+          headers: {
+            "Content-Type": "application/octet-stream",
+            "Content-Length": "4",
+          },
+        }),
+      );
+      const onProgress = vi.fn();
+
+      const blob = await api.downloadFile("a b", {
+        mimeType: "audio/mpeg",
+        onProgress,
+      });
+
+      expect(blob.size).toBe(4);
+      expect(blob.type).toBe("audio/mpeg");
+      const { url, headers } = requestAt(fetchFn, 0);
+      expect(url.pathname).toBe("/drive/v3/files/a%20b");
+      expect(url.searchParams.get("alt")).toBe("media");
+      expect(headers.Authorization).toBe("Bearer t1");
+      expect(onProgress).toHaveBeenLastCalledWith(1);
+      for (const [ratio] of onProgress.mock.calls) {
+        expect(ratio).toBeGreaterThan(0);
+        expect(ratio).toBeLessThanOrEqual(1);
+      }
+    });
+
+    it("mimeType の指定がなければ Content-Type を使う。onProgress なしでも取得できる", async () => {
+      const { api, fetchFn } = setup();
+      fetchFn.mockResolvedValueOnce(
+        new Response(bytes, { headers: { "Content-Type": "audio/mp4" } }),
+      );
+      const blob = await api.downloadFile("id");
+      expect(blob.size).toBe(4);
+      expect(blob.type).toBe("audio/mp4");
+    });
+
+    it("401 ならトークンを取り直して再試行する", async () => {
+      const { api, auth, fetchFn } = setup();
+      fetchFn
+        .mockResolvedValueOnce(new Response("", { status: 401 }))
+        .mockResolvedValueOnce(new Response(bytes));
+      const blob = await api.downloadFile("id");
+      expect(blob.size).toBe(4);
+      expect(auth.refreshToken).toHaveBeenCalledTimes(1);
+      expect(requestAt(fetchFn, 1).headers.Authorization).toBe("Bearer t2");
+    });
+
+    it("失敗したら DriveApiError", async () => {
+      const { api, fetchFn } = setup();
+      fetchFn.mockResolvedValueOnce(new Response("", { status: 404 }));
+      await expect(api.downloadFile("id")).rejects.toBeInstanceOf(
+        DriveApiError,
+      );
+    });
+  });
 });

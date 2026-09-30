@@ -3,7 +3,8 @@ import { createPinia, setActivePinia } from "pinia";
 import { defineComponent, h } from "vue";
 import { RouterView, createMemoryHistory, createRouter } from "vue-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useDriveStore, type DriveApi } from "@/features/drive";
+import { useDriveStore, type DriveApi, type DriveItem } from "@/features/drive";
+import { usePlayerStore, type AudioPlayer } from "@/features/player";
 import { usePlaylistStore } from "@/features/playlist";
 import LibraryPage from "./LibraryPage.vue";
 import { SortableListStub } from "@/shared/ui/sortable-list-stub";
@@ -17,12 +18,28 @@ const folderItem = {
   parents: [],
 };
 
-async function setup(initialPath = "/") {
+const songItem: DriveItem = {
+  id: "s1",
+  name: "song.mp3",
+  mimeType: "audio/mpeg",
+  size: 1,
+  modifiedTime: "",
+  parents: ["root"],
+};
+
+async function setup(
+  initialPath = "/",
+  options: { items?: DriveItem[]; beforeMount?: () => void } = {},
+) {
   localStorage.clear();
   setActivePinia(createPinia());
   const api = {
+    downloadFile: vi.fn<DriveApi["downloadFile"]>(),
     listFolder: vi.fn<DriveApi["listFolder"]>(() =>
-      Promise.resolve({ items: [folderItem], nextPageToken: null }),
+      Promise.resolve({
+        items: options.items ?? [folderItem],
+        nextPageToken: null,
+      }),
     ),
     search: vi.fn<DriveApi["search"]>(() =>
       Promise.resolve({ items: [], nextPageToken: null }),
@@ -33,6 +50,7 @@ async function setup(initialPath = "/") {
   } satisfies DriveApi;
   useDriveStore().setApi(api);
   usePlaylistStore().setApi(api);
+  options.beforeMount?.();
 
   const router = createRouter({
     history: createMemoryHistory(),
@@ -100,7 +118,7 @@ describe("LibraryPage", () => {
 
   it("検索欄の Enter で /search/:q へ、空なら / へ移動する", async () => {
     const { router, wrapper } = await setup("/");
-    const input = wrapper.get("input");
+    const input = wrapper.get(".pane-drive .search-input");
     await input.setValue("foo");
     await input.trigger("keydown", { key: "Enter" });
     await flushPromises();
@@ -175,5 +193,91 @@ describe("LibraryPage", () => {
     await wrapper.get(".pane-playlist .clear").trigger("click");
     expect(wrapper.findAll(".pane-playlist .track-row")).toHaveLength(0);
     expect(wrapper.get(".pane-playlist .empty").text()).toBe("No data :)");
+  });
+
+  describe("再生", () => {
+    function fakeAudio() {
+      return {
+        setSource: vi.fn(),
+        clearSource: vi.fn(),
+        play: vi.fn(() => Promise.resolve()),
+        pause: vi.fn(),
+        seek: vi.fn(),
+        subscribe: vi.fn(),
+      } satisfies AudioPlayer;
+    }
+
+    function configurePlayer(audio: AudioPlayer) {
+      return () => {
+        usePlayerStore().configure({
+          audio,
+          loadMedia: (item) =>
+            Promise.resolve({ url: `blob:${item.id}`, revoke: vi.fn() }),
+        });
+      };
+    }
+
+    it("ドライブ内一覧の曲をダブルクリックすると再生し、行を強調する", async () => {
+      const audio = fakeAudio();
+      const { wrapper } = await setup("/", {
+        items: [songItem],
+        beforeMount: configurePlayer(audio),
+      });
+      const row = wrapper.get(".pane-drive .track-row");
+      await row.trigger("click");
+      await row.trigger("click");
+      await flushPromises();
+
+      expect(audio.setSource).toHaveBeenCalledWith("blob:s1");
+      expect(usePlayerStore().source).toBe("drive");
+      expect(wrapper.get(".pane-drive .track-row").classes()).toContain(
+        "playing",
+      );
+      expect(wrapper.find(".player-bar .pause").exists()).toBe(true);
+    });
+
+    it("プレイリストの曲をダブルクリックすると、プレイリストを再生元にして再生する", async () => {
+      const audio = fakeAudio();
+      const { wrapper } = await setup("/", {
+        beforeMount: () => {
+          configurePlayer(audio)();
+          usePlaylistStore().items = [songItem];
+        },
+      });
+      const row = wrapper.get(".pane-playlist .track-row");
+      await row.trigger("click");
+      await row.trigger("click");
+      await flushPromises();
+
+      expect(audio.setSource).toHaveBeenCalledWith("blob:s1");
+      expect(usePlayerStore().source).toBe("playlist");
+    });
+
+    it("別のフォルダを開いても再生は止まらない", async () => {
+      const audio = fakeAudio();
+      const { router } = await setup("/", {
+        items: [songItem],
+        beforeMount: configurePlayer(audio),
+      });
+      await usePlayerStore().play(songItem, "drive");
+      await router.push("/folders/other");
+      await flushPromises();
+      expect(usePlayerStore().current?.id).toBe("s1");
+      expect(usePlayerStore().status).toBe("playing");
+      expect(audio.pause).not.toHaveBeenCalled();
+    });
+
+    it("フォルダのダブルクリックは再生せず、開く", async () => {
+      const audio = fakeAudio();
+      const { router, wrapper } = await setup("/", {
+        beforeMount: configurePlayer(audio),
+      });
+      const row = wrapper.get(".pane-drive .track-row");
+      await row.trigger("click");
+      await row.trigger("click");
+      await flushPromises();
+      expect(router.currentRoute.value.fullPath).toBe("/folders/f1");
+      expect(audio.setSource).not.toHaveBeenCalled();
+    });
   });
 });

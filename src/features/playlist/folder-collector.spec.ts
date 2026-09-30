@@ -40,6 +40,7 @@ function fakeApi(tree: Record<string, DriveItem[]>, pageSize = 1000) {
     },
   );
   const api = {
+    downloadFile: vi.fn<DriveApi["downloadFile"]>(),
     listChildren,
     listFolder: vi.fn(),
     search: vi.fn(),

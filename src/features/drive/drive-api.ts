@@ -31,6 +31,14 @@ export interface ListPage {
   nextPageToken: string | null;
 }
 
+export interface DownloadOptions {
+  signal?: AbortSignal;
+  /** 取得した割合（0〜1）。サイズが分からないときは、最後に 1 だけ呼ばれる */
+  onProgress?: (ratio: number) => void;
+  /** Blob の種類。Drive のメタデータの mimeType を渡す（応答の Content-Type より信頼できる） */
+  mimeType?: string;
+}
+
 export interface DriveApi {
   listFolder(folderId: string, options?: ListOptions): Promise<ListPage>;
   search(word: string, options?: ListOptions): Promise<ListPage>;
@@ -39,6 +47,8 @@ export interface DriveApi {
     parentIds: readonly string[],
     options?: ListOptions,
   ): Promise<ListPage>;
+  /** ファイルの中身を Blob として取得する */
+  downloadFile(fileId: string, options?: DownloadOptions): Promise<Blob>;
 }
 
 export class DriveApiError extends Error {
@@ -88,8 +98,11 @@ export function createDriveApi(
     });
   }
 
-  /** 401 のときだけ、トークンを取り直して 1 回だけ再試行する */
-  async function request(url: string, signal?: AbortSignal): Promise<RawList> {
+  /** 認証つきで取得する。401 のときだけ、トークンを取り直して 1 回だけ再試行する */
+  async function authorizedFetch(
+    url: string,
+    signal?: AbortSignal,
+  ): Promise<Response> {
     let response = await send(url, await auth.getValidToken(), signal);
     if (response.status === 401) {
       response = await send(url, await auth.refreshToken(), signal);
@@ -104,7 +117,43 @@ export function createDriveApi(
         `Drive API がエラーを返しました (${response.status})`,
       );
     }
+    return response;
+  }
+
+  async function request(url: string, signal?: AbortSignal): Promise<RawList> {
+    const response = await authorizedFetch(url, signal);
     return (await response.json()) as RawList;
+  }
+
+  async function downloadFile(
+    fileId: string,
+    options: DownloadOptions = {},
+  ): Promise<Blob> {
+    const url = `${FILES_URL}/${encodeURIComponent(fileId)}?alt=media`;
+    const response = await authorizedFetch(url, options.signal);
+    const type = options.mimeType ?? response.headers.get("Content-Type") ?? "";
+    const total = Number(response.headers.get("Content-Length"));
+    const reader = response.body?.getReader();
+
+    if (!reader || !options.onProgress || !(total > 0)) {
+      const blob = await response.blob();
+      options.onProgress?.(1);
+      return type && blob.type !== type ? new Blob([blob], { type }) : blob;
+    }
+
+    const chunks: Uint8Array[] = [];
+    let loaded = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      chunks.push(value);
+      loaded += value.length;
+      options.onProgress(Math.min(loaded / total, 1));
+    }
+    options.onProgress(1);
+    return new Blob(chunks as BlobPart[], { type });
   }
 
   async function list(
@@ -141,5 +190,6 @@ export function createDriveApi(
       list(searchQuery(word), LIST_PAGE_SIZE, LIST_ORDER, options),
     listChildren: (parentIds, options) =>
       list(childrenQuery(parentIds), CHILDREN_PAGE_SIZE, null, options),
+    downloadFile,
   };
 }

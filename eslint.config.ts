@@ -20,6 +20,21 @@ export default defineConfigWithVueTs(
   pluginVue.configs["flat/recommended"],
   vueTsConfigs.recommended,
   {
+    name: "app/unused-vars",
+    files: ["**/*.{ts,mts,tsx,vue}"],
+    rules: {
+      // 使わないが、型や役割を分かりやすくするために書く引数・変数は _ で始める
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
+    },
+  },
+  {
     ...pluginVitest.configs.recommended,
     name: "app/vitest",
     files: ["src/**/*.spec.ts"],

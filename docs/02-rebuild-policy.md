@@ -114,8 +114,8 @@ App.vue
 - 2026-09-30: 既存コードは踏襲せず作り直す。Vue 3.5、Vite、TypeScript、Pinia、ESLint 9 + Prettier、Vitest を採用する。
 - 2026-09-30: ホスティングは Firebase Hosting のみ。サーバー側の処理（Cloud Functions、Supabase など）は持たない。カード登録なしの無料枠で運用する。リフレッシュトークンによる自動更新は見送り、iOS では保存済みトークンの再利用で対応する（[04](./04-ios-auth-persistence.md)）。
 - 2026-09-30: 認証は現行の gapi.auth2 を継続する（実機で動作確認済み）。アプリ自身による localStorage の全消去を解消する（[04](./04-ios-auth-persistence.md)）。
-
 - 2026-09-30: パッケージマネージャは npm、Node は 22、開発サーバーのポートは 8081、保存キーの接頭辞は `gdp:` とする。
+- 2026-09-30: 使わないが分かりやすさのために書く引数・変数は `_` で始め、ESLint の `no-unused-vars` の対象から外す（`argsIgnorePattern` / `varsIgnorePattern` / `caughtErrorsIgnorePattern`）。
 
 ## 未決事項
 

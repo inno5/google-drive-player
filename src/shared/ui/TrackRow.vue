@@ -1,8 +1,6 @@
 <script setup lang="ts">
+import { createClickCounter } from "@/shared/lib/click-count";
 import { formatBytes } from "@/shared/lib/format";
-
-/** ダブルクリック・ダブルタップとみなす間隔（ms） */
-const DOUBLE_TAP_MS = 350;
 
 const {
   index,
@@ -33,16 +31,11 @@ const emit = defineEmits<{
   action: [];
 }>();
 
-let lastClickAt = 0;
+const countClick = createClickCounter();
 
-// dblclick はタッチ端末で安定しないため、click の間隔で判定する
 function onClick(): void {
-  const now = Date.now();
-  if (now - lastClickAt <= DOUBLE_TAP_MS) {
-    lastClickAt = 0;
+  if (countClick() === "double") {
     emit("activate");
-  } else {
-    lastClickAt = now;
   }
 }
 </script>

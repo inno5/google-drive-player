@@ -1,5 +1,5 @@
 import { mount } from "@vue/test-utils";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { SortableListStub } from "@/shared/ui/sortable-list-stub";
 import PlaylistPanel from "./PlaylistPanel.vue";
 import type { PlaylistItem } from "./playlist-storage";
@@ -72,5 +72,13 @@ describe("PlaylistPanel", () => {
     await wrapper.get(".cancel").trigger("click");
     expect(wrapper.emitted("cancelAdd")).toHaveLength(1);
     expect(factory().find(".adding").exists()).toBe(false);
+  });
+
+  it("scrollToken が変わったら、再生中の行までスクロールする", async () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    const wrapper = factory({ playingId: "2", scrollToken: 0 });
+    await wrapper.setProps({ scrollToken: 1 });
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
   });
 });

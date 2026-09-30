@@ -32,6 +32,7 @@ function deferred<T>() {
 
 function setup() {
   const api = {
+    downloadFile: vi.fn<DriveApi["downloadFile"]>(),
     listFolder: vi.fn<DriveApi["listFolder"]>(() =>
       Promise.resolve(page(["a", "b"])),
     ),

@@ -15,6 +15,7 @@ const {
   query = "",
   playingId = "",
   canAdd = false,
+  scrollToken = 0,
 } = defineProps<{
   items: DriveItem[];
   status: DriveStatus;
@@ -28,6 +29,8 @@ const {
   playingId?: string;
   /** 行末の追加ボタンを有効にするか */
   canAdd?: boolean;
+  /** 値が変わるたびに、再生中の行を画面の中央までスクロールする */
+  scrollToken?: number;
 }>();
 
 const emit = defineEmits<{
@@ -59,6 +62,14 @@ function onKeydownSearch(event: KeyboardEvent): void {
 }
 
 const listElement = useTemplateRef<HTMLElement>("list");
+watch(
+  () => scrollToken,
+  () => {
+    listElement.value
+      ?.querySelector(".track-row.playing")
+      ?.scrollIntoView({ behavior: "auto", block: "center" });
+  },
+);
 const sentinel = useTemplateRef<HTMLElement>("sentinel");
 const { recheck } = useInfiniteScroll(sentinel, listElement, () => {
   emit("loadMore");
