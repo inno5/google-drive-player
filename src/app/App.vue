@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useAuthStore } from "@/features/auth";
+import AppToast from "@/shared/ui/AppToast.vue";
 import AppHeader from "./AppHeader.vue";
 
 const auth = useAuthStore();
@@ -11,6 +12,7 @@ const auth = useAuthStore();
     <p v-if="auth.status === 'unknown'" class="loading">読み込み中…</p>
     <RouterView v-else />
   </main>
+  <AppToast />
 </template>
 
 <style scoped>

@@ -1,22 +1,8 @@
 import { mount } from "@vue/test-utils";
-import { defineComponent, h } from "vue";
 import { describe, expect, it } from "vitest";
 import DrivePanel from "./DrivePanel.vue";
 import type { DriveItem } from "./drive-types";
-
-// ドラッグの実装（vue-draggable-plus）には依存せず、スロットだけを描画する
-const SortableListStub = defineComponent({
-  props: { modelValue: { type: Array, default: () => [] } },
-  setup(props, { slots }) {
-    return () =>
-      h(
-        "div",
-        (props.modelValue as { id: string }[]).flatMap(
-          (item, index) => slots.default?.({ item, index }) ?? [],
-        ),
-      );
-  },
-});
+import { SortableListStub } from "@/shared/ui/sortable-list-stub";
 
 const song: DriveItem = {
   id: "s1",

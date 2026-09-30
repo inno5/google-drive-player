@@ -2,7 +2,18 @@
 
 ドライブ内の一覧（[05](./05-step2-drive.md)）とプレイリストは同じ画面に並ぶため、画面の構成と 2 つの一覧に共通する操作をここで決める。プレイリスト自体の実装はステップ 3 で行う。
 
-状態: **レビュー済み（2026-09-30）**
+状態: **プレイリストは実装済み・未検証（2026-09-30）**
+
+## 実装状況
+
+- 実装済み（ステップ 3）: `features/playlist`（`playlist-store` / `playlist-storage` / `folder-collector` / `PlaylistPanel`）、`shared/ui` のトースト（`AppToast` / `useToast`）、LibraryPage での接続（追加・削除・並べ替え・Remove All・追加中の表示とキャンセル）、対応するテスト。
+- 設計との差分:
+  - フォルダの中身は「フォルダ直下 → サブフォルダ（深さ優先）」の順に、兄弟のフォルダ 50 個ずつをまとめて取得する。500 曲に達したらそれ以降は取得しない。
+  - 依存の向きは playlist → drive（`listChildren` と型を使う）。drive は playlist を import しない。追加の配線は LibraryPage が行う。
+  - フォルダ追加中に別のフォルダを追加しようとすると「フォルダを追加中です」と知らせる（ファイルは追加できる）。
+  - 中身に音声ファイルがないフォルダは、何も追加せず知らせる。
+- 未実装: 再生（ステップ 4）、表示名のタグ反映（ステップ 5。今はファイル名を表示）。
+- **未検証**: `check` は未実行。並び順のロジック（`folder-collector`）は Node で動作を確認した。
 
 ## 画面構成（現行と同じ）
 
@@ -116,7 +127,7 @@ interface PlaylistItem {
 src/features/playlist/
 ├─ playlist-store.ts     Pinia: items、add / addFolder / remove / move / clear、保存
 ├─ playlist-storage.ts   読み書きと形式の検証
-├─ folder-collector.ts   フォルダの中身を再帰的に集めて並べる（drive の公開 API を使う）
+├─ folder-collector.ts   フォルダの中身を再帰的に集めて並べる（drive の公開 API を使う。drive は playlist を import しない）
 ├─ PlaylistPanel.vue     Remove All + 一覧
 └─ index.ts
 src/features/library/
@@ -126,7 +137,7 @@ src/features/library/
 src/shared/ui/
 ├─ TrackRow.vue          一覧の 1 行（両方の一覧で使う）
 ├─ SortableList.vue      vue-draggable-plus の薄いラッパー
-└─ Toast.vue / useToast.ts
+└─ AppToast.vue / useToast.ts
 ```
 
 - `features/library/` はステップ 2 で作り（DrivePanel だけを置く）、ステップ 3 で PlaylistPanel を加える。drive と playlist の両方を並べるため、どちらの feature にも属さない。

@@ -4,20 +4,9 @@ import { defineComponent, h } from "vue";
 import { RouterView, createMemoryHistory, createRouter } from "vue-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useDriveStore, type DriveApi } from "@/features/drive";
+import { usePlaylistStore } from "@/features/playlist";
 import LibraryPage from "./LibraryPage.vue";
-
-const SortableListStub = defineComponent({
-  props: { modelValue: { type: Array, default: () => [] } },
-  setup(props, { slots }) {
-    return () =>
-      h(
-        "div",
-        (props.modelValue as { id: string }[]).flatMap(
-          (item, index) => slots.default?.({ item, index }) ?? [],
-        ),
-      );
-  },
-});
+import { SortableListStub } from "@/shared/ui/sortable-list-stub";
 
 const folderItem = {
   id: "f1",
@@ -43,6 +32,7 @@ async function setup(initialPath = "/") {
     ),
   } satisfies DriveApi;
   useDriveStore().setApi(api);
+  usePlaylistStore().setApi(api);
 
   const router = createRouter({
     history: createMemoryHistory(),
@@ -144,5 +134,46 @@ describe("LibraryPage", () => {
     await wrapper.get(".tab-playlist").trigger("click");
     expect(playlist.attributes("style") ?? "").not.toContain("display: none");
     expect(wrapper.get(".panes").classes()).toContain("two-column");
+  });
+
+  it("フォルダの追加ボタンで、中身の曲がプレイリストに入る", async () => {
+    const { api, wrapper } = await setup("/");
+    api.listChildren.mockResolvedValueOnce({
+      items: [
+        {
+          id: "s1",
+          name: "song.mp3",
+          mimeType: "audio/mpeg",
+          size: 1,
+          modifiedTime: "",
+          parents: ["f1"],
+        },
+      ],
+      nextPageToken: null,
+    });
+    await wrapper.get(".pane-drive .cell-ctrl").trigger("click");
+    await flushPromises();
+    const rows = wrapper.findAll(".pane-playlist .track-row");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.get(".name").text()).toBe("song.mp3");
+  });
+
+  it("プレイリストの Remove All で空になる", async () => {
+    const { wrapper } = await setup("/");
+    usePlaylistStore().items = [
+      {
+        id: "s1",
+        name: "song.mp3",
+        mimeType: "audio/mpeg",
+        size: 1,
+        modifiedTime: "",
+        parents: [],
+      },
+    ];
+    await flushPromises();
+    expect(wrapper.findAll(".pane-playlist .track-row")).toHaveLength(1);
+    await wrapper.get(".pane-playlist .clear").trigger("click");
+    expect(wrapper.findAll(".pane-playlist .track-row")).toHaveLength(0);
+    expect(wrapper.get(".pane-playlist .empty").text()).toBe("No data :)");
   });
 });

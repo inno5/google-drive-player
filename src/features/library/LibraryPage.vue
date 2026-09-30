@@ -8,12 +8,14 @@ import {
   useDriveStore,
 } from "@/features/drive";
 import type { DriveItem } from "@/features/drive";
+import { PlaylistPanel, usePlaylistStore } from "@/features/playlist";
 import ViewTabs from "./ViewTabs.vue";
 import { useViewStore } from "./view-store";
 
 const route = useRoute();
 const router = useRouter();
 const drive = useDriveStore();
+const playlist = usePlaylistStore();
 const viewStore = useViewStore();
 
 // URL が正。ルートが変わったら、その内容を読み込む
@@ -63,8 +65,10 @@ function onActivate(item: DriveItem): void {
             :has-more="drive.nextPageToken !== null"
             :has-loaded="drive.hasLoaded"
             :query="drive.mode === 'search' ? drive.query : ''"
+            :can-add="playlist.adding === null"
             @search="onSearch"
             @activate="onActivate"
+            @add="playlist.add"
             @reorder="drive.reorder"
             @load-more="drive.loadMore()"
             @retry="drive.retry()"
@@ -73,7 +77,14 @@ function onActivate(item: DriveItem): void {
       </section>
       <section v-show="viewStore.view !== 'drive'" class="pane pane-playlist">
         <div class="pane-inner">
-          <p class="placeholder">プレイリストはステップ 3 で実装します。</p>
+          <PlaylistPanel
+            :items="playlist.items"
+            :adding="playlist.adding"
+            @remove="playlist.remove($event.id)"
+            @reorder="playlist.reorder"
+            @clear="playlist.clear()"
+            @cancel-add="playlist.cancelAdding()"
+          />
         </div>
       </section>
     </div>
@@ -121,10 +132,5 @@ function onActivate(item: DriveItem): void {
 }
 .two-column .pane-playlist .pane-inner {
   margin: 0 auto 0 0;
-}
-.placeholder {
-  padding: 24px 12px;
-  color: #666;
-  font-size: 14px;
 }
 </style>
