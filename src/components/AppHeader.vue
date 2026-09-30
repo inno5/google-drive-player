@@ -98,6 +98,7 @@ import "reset.css";
 import { Component, Vue } from "vue-property-decorator";
 import { authService } from "@/services/auth-service";
 import { appState } from "@/state/app-state";
+import { debugLog } from "@/utils/debug-log";
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const APP_VERSION = require("../../package.json").version;
@@ -113,7 +114,7 @@ export default class AppHeader extends Vue {
   }
 
   onClickHelpBtn(): void {
-    alert(`Google Drive Player\n${APP_VERSION}`);
+    alert(`Google Drive Player\n${APP_VERSION}\n\n${debugLog.format()}`);
   }
 }
 </script>

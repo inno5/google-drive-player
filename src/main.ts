@@ -9,6 +9,10 @@ import AudiotrackIcon from "vue-material-design-icons/AudioVideo.vue";
 import Toasted from "vue-toasted";
 import { authService } from "./services/auth-service";
 import VToolTip from "v-tooltip";
+import { debugLog } from "./utils/debug-log";
+
+// 他の処理が localStorage に触る前に起動時の状態を記録する
+debugLog.recordBoot();
 
 Vue.config.productionTip = false;
 Vue.use(InfiniteLoading);

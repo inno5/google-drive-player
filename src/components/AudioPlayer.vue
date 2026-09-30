@@ -332,7 +332,8 @@ export default class AudioPlayer extends Vue {
   abortController: AbortController | null = null;
   async play(fileData: FileData | null = null): Promise<boolean> {
     if (this.abortController) {
-      this.abortController.abort("abort for load next data.");
+      // 次の曲を読み込むため、読み込み中のリクエストを中断する
+      this.abortController.abort();
     }
 
     if (fileData) {
