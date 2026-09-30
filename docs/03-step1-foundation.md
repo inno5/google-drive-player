@@ -2,6 +2,12 @@
 
 ステップ 1 のゴールは、Vue 3.5 の新しい骨組みの上で Google サインインが通り、lint・format・型チェック・テストが揃って動く状態にすること。あわせて、アプリ自身が保存データを消してしまう不具合を解消する。Drive 一覧や再生はステップ 2 以降で扱う。
 
+## 実装状況（2026-09-30）
+
+- 実装済み: ディレクトリ構成、各種設定、認証（`gapi-auth.ts` / `auth-store.ts` / `token-storage.ts`）、ルーターのガード、SignInPage、`/debug`、Unit・Component テスト一式。
+- 設計との差分: トークン保存は `TokenStorage` インターフェースではなく関数（`token-storage.ts`）にした。SignInPage のテストは「Google ボタンの描画を依頼する」「エラーを表示する」を対象にした（ボタン自体は Google のライブラリが描画するため）。
+- **未検証**: 実装した環境では npm レジストリに接続できず、`npm install` と `check` は未実行。依存パッケージのバージョンも未確認。最初に `npm install && npm run format && npm run check` を実行し、エラーを直すこと。
+
 ## 範囲
 
 | 含む | 含まない |
@@ -17,9 +23,9 @@
 | script | 内容 |
 | --- | --- |
 | `dev` | `vite` |
-| `build` | `vue-tsc --noEmit && vite build` |
+| `build` | `typecheck` + `vite build` |
 | `lint` / `lint:fix` | `eslint .` / `eslint . --fix` |
-| `format` / `format:check` | `prettier --write src/` / `prettier --check src/` |
+| `format` / `format:check` | `prettier --write .` / `prettier --check .` |
 | `typecheck` | `vue-tsc --noEmit` |
 | `test` / `test:watch` | `vitest run` / `vitest` |
 | `check` | `lint` + `format:check` + `typecheck` + `test` をまとめて実行 |

@@ -1,0 +1,26 @@
+:root {
+  --color-main: #3bbec0;
+  --color-white: #fff;
+  --color-black: #333;
+  --color-gray: #f2f2f2;
+  --app-max-width: 960px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: Avenir, Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  color: var(--color-black);
+  text-align: center;
+  -webkit-font-smoothing: antialiased;
+}

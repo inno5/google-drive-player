@@ -1,55 +1,43 @@
 # google-drive-player
 
-動作させるには google cloud platform (GCP) の API key と OAUTH2 client id が必要です。
+Google Drive 内の音楽を再生する Web アプリ（Vue 3.5 + Vite + TypeScript + Pinia）。
+設計・方針は [docs/](./docs/README.md) を参照。
 
-以下のファイルに GCP API key と GCP OAUTH2 client id を記述してください。
-env/.env.local.ts
-env/.env.prod.ts
+現在はステップ 1（基盤と認証）まで。Drive 一覧・再生はステップ 2 以降。
 
-記述が終わったらファイル名先頭の . を削除してください。
-以下のようになれば準備完了です。
-env/env.local.ts
-env/env.prod.ts
+## セットアップ
 
-yarn serve
-local 用の env でローカルサーバが起動します。
+Node 22 が必要（`.node-version`）。
 
-yarn deploy
-prod 用の env で firebase deploy が実行されます。
-（このコマンドを使用する場合はまず firebase init を実行して firebase hosting の初期化を行なってください。）
-
-https://firebase.google.com/docs/cli
-
-favicon
-https://realfavicongenerator.net/
-
-icon
-https://fonts.google.com/icons?selected=Material+Icons
-
-## Project setup
-
-```
-yarn install
+```sh
+npm install
 ```
 
-### Compiles and hot-reloads for development
+`.env.example` を参考に、`.env.local`（開発）と `.env.production`（本番ビルド）を作り、次を設定する。どちらも git 管理外。
 
 ```
-yarn serve
+VITE_GOOGLE_CLIENT_ID=...
+VITE_GOOGLE_API_KEY=...
 ```
 
-### Compiles and minifies for production
+OAuth クライアント ID は現行のものを使い続けること（gapi.auth2 は 2022-07-29 以降に作られた ID では動かない）。
+承認済み JavaScript 生成元に `http://localhost:8081`、本番 URL、プレビューチャンネルの URL を登録しておく。
 
-```
-yarn build
-```
+## スクリプト
 
-### Lints and fixes files
+| script | 内容 |
+| --- | --- |
+| `npm run dev` | 開発サーバー（http://localhost:8081） |
+| `npm run build` | 型チェック + 本番ビルド（`dist/`） |
+| `npm run preview` | ビルド結果の確認（8081） |
+| `npm run lint` / `lint:fix` | ESLint |
+| `npm run format` / `format:check` | Prettier |
+| `npm run typecheck` | vue-tsc |
+| `npm test` / `test:watch` | Vitest |
+| `npm run check` | lint + format:check + typecheck + test |
+| `npm run deploy:preview` | check + build + Firebase プレビューチャンネルへデプロイ |
+| `npm run deploy` | check + build + Firebase Hosting 本番へデプロイ |
 
-```
-yarn lint
-```
+## デバッグ
 
-### Customize configuration
-
-See [Configuration Reference](https://cli.vuejs.org/config/).
+`/debug` で、起動ごとの認証状態の履歴と localStorage の中身を確認できる（iOS 検証用。[docs/04](./docs/04-ios-auth-persistence.md)）。

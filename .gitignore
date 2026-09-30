@@ -1,6 +1,8 @@
 .DS_Store
 node_modules
 /dist
+/coverage
+*.tsbuildinfo
 
 # Log files
 npm-debug.log*
@@ -17,10 +19,13 @@ pnpm-debug.log*
 *.sln
 *.sw?
 
-# private env file
-src/env/**/*.ts
+# 環境変数（Google Cloud の API キー / OAuth クライアント ID）。.env.example だけをコミットする
+.env
+.env.*
+!.env.example
 
-# local env files
+# 旧 Vue 2 版の env ファイル（移行済み。残っていてもコミットしない）
+src/env/**/*.ts
 env/env.*
 
 # firebase
