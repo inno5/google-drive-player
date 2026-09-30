@@ -59,3 +59,29 @@ export function pointerToSeconds(
   const row = Math.min(Math.max(Math.floor(y / rowHeight), 0), ROWS - 1);
   return pointToSeconds(row, x / width, duration);
 }
+
+/** マーカーからこの秒数以内なら、「マーカーの位置」ではなく曲の先頭へ戻る */
+export const PREV_RESTART_WINDOW_SECONDS = 1;
+
+/**
+ * 「戻る」ボタンを押したときの移動先（秒）。
+ * マーカーより後ろ（マーカーから 1 秒を超えて進んでいる）ならマーカーへ、
+ * マーカーがない・マーカーの前・マーカーから 1 秒以内なら曲の先頭へ。
+ */
+export function prevPosition(position: number, marker: number | null): number {
+  if (marker !== null && position - marker > PREV_RESTART_WINDOW_SECONDS) {
+    return marker;
+  }
+  return 0;
+}
+
+/**
+ * 「進む」ボタンを押したときの移動先（秒）。
+ * 再生位置がマーカーより前ならマーカーへ。マーカーがない、または再生位置がマーカー以降なら、何も起きない（null）。
+ */
+export function nextPosition(
+  position: number,
+  marker: number | null,
+): number | null {
+  return marker !== null && position < marker ? marker : null;
+}

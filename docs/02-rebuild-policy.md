@@ -94,7 +94,7 @@
 
 ```
 App.vue
-├─ AppHeader            タイトル・サインアウト
+├─ AppHeader            タイトル・画面切り替えのボタン（サインアウトはデバッグ画面へ移した）
 └─ RouterView
    ├─ SignInPage        サインインボタン
    └─ LibraryPage       /、/folders/:id、/search/:q

@@ -2,7 +2,7 @@
 import { ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/features/auth";
-import { isMainView, resolveToggle, type ToggleTarget } from "./nav-toggle";
+import { isMainView, resolveNav, type NavTarget } from "./header-nav";
 
 const auth = useAuthStore();
 const route = useRoute();
@@ -20,8 +20,8 @@ watch(
   { immediate: true },
 );
 
-function toggle(target: ToggleTarget): void {
-  void router.push(resolveToggle(route.name, target, lastMainPath.value));
+function go(target: NavTarget): void {
+  void router.push(resolveNav(target, lastMainPath.value));
 }
 </script>
 
@@ -40,34 +40,37 @@ function toggle(target: ToggleTarget): void {
       </h1>
 
       <nav class="nav">
+        <template v-if="auth.status === 'signedIn'">
+          <button
+            type="button"
+            class="nav-link icon-link"
+            :class="{ active: isMainView(route.name) }"
+            aria-label="リスト"
+            title="リスト"
+            @click="go('main')"
+          >
+            <span class="icon material-icons">queue_music</span>
+          </button>
+          <button
+            type="button"
+            class="nav-link icon-link"
+            :class="{ active: route.name === 'practice' }"
+            aria-label="耳コピ"
+            title="耳コピ"
+            @click="go('practice')"
+          >
+            <span class="icon material-icons">hearing</span>
+          </button>
+        </template>
         <button
-          v-if="auth.status === 'signedIn'"
           type="button"
-          class="nav-link signout"
-          @click="auth.signOut()"
-        >
-          サインアウト
-        </button>
-        <button
-          v-if="auth.status === 'signedIn'"
-          type="button"
-          class="nav-link icon-link practice"
-          :class="{ active: route.name === 'practice' }"
-          aria-label="練習ビュー"
-          title="練習ビュー"
-          @click="toggle('practice')"
-        >
-          <span class="icon material-icons">tune</span>
-        </button>
-        <button
-          type="button"
-          class="nav-link icon-link help"
+          class="nav-link icon-link"
           :class="{ active: route.name === 'debug' }"
-          aria-label="デバッグ情報"
-          title="デバッグ情報"
-          @click="toggle('debug')"
+          aria-label="設定・デバッグ情報"
+          title="設定・デバッグ情報"
+          @click="go('debug')"
         >
-          <span class="icon material-icons">help_outline</span>
+          <span class="icon material-icons">settings</span>
         </button>
       </nav>
     </div>
@@ -127,14 +130,14 @@ a.title-link:active,
   text-decoration: none;
   cursor: pointer;
 }
-.signout {
-  padding: 8px 0 8px 8px;
-}
 .icon-link {
-  margin-left: 16px;
+  margin-left: 12px;
+  padding: 4px;
+  border-radius: 50%;
 }
+/* 今開いている画面のボタンは、うすい丸を敷く */
 .icon-link.active {
-  opacity: 0.6;
+  background: rgb(255 255 255 / 25%);
 }
 .icon-link .icon {
   display: block;

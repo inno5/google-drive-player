@@ -103,6 +103,13 @@ onMounted(() => {
         <dt>エラー</dt>
         <dd>{{ auth.error ?? "-" }}</dd>
       </dl>
+      <button
+        v-if="auth.status === 'signedIn'"
+        type="button"
+        @click="auth.signOut()"
+      >
+        サインアウト
+      </button>
     </section>
 
     <section>

@@ -10,9 +10,9 @@ describe("params", () => {
     expect(clampPitch(Number.NaN)).toBe(0);
   });
 
-  it("速度は 0.05 刻みで 0.25〜2 に収める", () => {
+  it("速度は 0.25 刻みで 0.25〜2 に収める", () => {
     expect(clampSpeed(0.75)).toBe(0.75);
-    expect(clampSpeed(0.76)).toBe(0.75);
+    expect(clampSpeed(0.9)).toBe(1);
     expect(clampSpeed(0.1)).toBe(0.25);
     expect(clampSpeed(3)).toBe(2);
     expect(clampSpeed(Number.NaN)).toBe(1);

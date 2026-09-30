@@ -2,8 +2,7 @@ export const PITCH_MIN = -12;
 export const PITCH_MAX = 12;
 export const SPEED_MIN = 0.25;
 export const SPEED_MAX = 2;
-export const SPEED_STEP = 0.05;
-export const SPEED_PRESETS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2] as const;
+export const SPEED_STEP = 0.25;
 /** 曲の長さの上限（秒） */
 export const MAX_DURATION_SECONDS = 15 * 60;
 
@@ -15,7 +14,7 @@ export function clampPitch(value: number): number {
   return Math.min(Math.max(Math.round(value), PITCH_MIN), PITCH_MAX);
 }
 
-/** 速度（倍）を 0.05 刻みにして、範囲内に収める */
+/** 速度（倍）を 0.25 刻みにして、範囲内に収める */
 export function clampSpeed(value: number): number {
   if (!Number.isFinite(value)) {
     return 1;

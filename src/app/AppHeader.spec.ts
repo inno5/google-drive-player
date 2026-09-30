@@ -26,53 +26,64 @@ async function setup(signedIn = true) {
   return { router, wrapper };
 }
 
-describe("AppHeader のトグルボタン", () => {
+describe("AppHeader のナビゲーションボタン", () => {
   beforeEach(() => {
     localStorage.clear();
   });
 
-  it("練習ボタンは「?」の隣にあり、サインイン時だけ出る", async () => {
+  function labels(wrapper: Awaited<ReturnType<typeof setup>>["wrapper"]) {
+    return wrapper
+      .findAll("button.icon-link")
+      .map((b) => b.attributes("aria-label"));
+  }
+
+  it("リスト・耳コピ・設定の順に並び、リストと耳コピはサインイン時だけ出る", async () => {
     const { wrapper } = await setup(true);
-    const labels = wrapper
-      .findAll("button.icon-link")
-      .map((b) => b.attributes("aria-label"));
-    expect(labels).toEqual(["練習ビュー", "デバッグ情報"]);
+    expect(labels(wrapper)).toEqual(["リスト", "耳コピ", "設定・デバッグ情報"]);
+    expect(wrapper.text()).toContain("queue_music");
+    expect(wrapper.text()).toContain("hearing");
+    expect(wrapper.text()).toContain("settings");
+    // サインアウトは、ヘッダーではなくデバッグ画面にある
+    expect(wrapper.text()).not.toContain("サインアウト");
     const signedOut = await setup(false);
-    const outLabels = signedOut.wrapper
-      .findAll("button.icon-link")
-      .map((b) => b.attributes("aria-label"));
-    expect(outLabels).toEqual(["デバッグ情報"]);
+    expect(labels(signedOut.wrapper)).toEqual(["設定・デバッグ情報"]);
   });
 
-  it("練習ビューへ移り、もう一度押すと直前のメインビューへ戻る", async () => {
+  it("押すとその画面へ移る。同じボタンをもう一度押しても切り替わらない", async () => {
     const { wrapper, router } = await setup();
-    await wrapper.get("[aria-label=練習ビュー]").trigger("click");
+    await wrapper.get("[aria-label=耳コピ]").trigger("click");
     await flushPromises();
     expect(router.currentRoute.value.name).toBe("practice");
-    await wrapper.get("[aria-label=練習ビュー]").trigger("click");
+    await wrapper.get("[aria-label=耳コピ]").trigger("click");
+    await flushPromises();
+    expect(router.currentRoute.value.name).toBe("practice");
+    await wrapper.get("[aria-label=設定・デバッグ情報]").trigger("click");
+    await flushPromises();
+    expect(router.currentRoute.value.name).toBe("debug");
+  });
+
+  it("リストは、直前のメインビュー（フォルダや検索語を含む）を開く", async () => {
+    const { wrapper, router } = await setup();
+    await wrapper.get("[aria-label=耳コピ]").trigger("click");
+    await flushPromises();
+    await wrapper.get("[aria-label=リスト]").trigger("click");
+    await flushPromises();
+    expect(router.currentRoute.value.fullPath).toBe("/folders/abc");
+    await wrapper.get("[aria-label=設定・デバッグ情報]").trigger("click");
+    await flushPromises();
+    await wrapper.get("[aria-label=リスト]").trigger("click");
     await flushPromises();
     expect(router.currentRoute.value.fullPath).toBe("/folders/abc");
   });
 
-  it("デバッグも同じようにトグルする", async () => {
+  it("今開いている画面のボタンを強調する", async () => {
     const { wrapper, router } = await setup();
-    await wrapper.get("[aria-label=デバッグ情報]").trigger("click");
+    expect(wrapper.get("[aria-label=リスト]").classes()).toContain("active");
+    await router.push("/practice");
     await flushPromises();
-    expect(router.currentRoute.value.name).toBe("debug");
-    await wrapper.get("[aria-label=デバッグ情報]").trigger("click");
-    await flushPromises();
-    expect(router.currentRoute.value.fullPath).toBe("/folders/abc");
-  });
-
-  it("練習ビューからデバッグへ移っても、戻り先はメインビューのまま", async () => {
-    const { wrapper, router } = await setup();
-    await wrapper.get("[aria-label=練習ビュー]").trigger("click");
-    await flushPromises();
-    await wrapper.get("[aria-label=デバッグ情報]").trigger("click");
-    await flushPromises();
-    expect(router.currentRoute.value.name).toBe("debug");
-    await wrapper.get("[aria-label=デバッグ情報]").trigger("click");
-    await flushPromises();
-    expect(router.currentRoute.value.fullPath).toBe("/folders/abc");
+    expect(wrapper.get("[aria-label=耳コピ]").classes()).toContain("active");
+    expect(wrapper.get("[aria-label=リスト]").classes()).not.toContain(
+      "active",
+    );
   });
 });

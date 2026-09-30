@@ -7,7 +7,13 @@ import {
   type EngineEvents,
   type PracticeEngine,
 } from "./engine/engine";
-import { MAX_DURATION_SECONDS, clampPitch, clampSpeed } from "./params";
+import {
+  MAX_DURATION_SECONDS,
+  SPEED_STEP,
+  clampPitch,
+  clampSpeed,
+} from "./params";
+import { nextPosition, prevPosition } from "./seek-layout";
 import { computeOverview, type RowPeaks } from "./waveform";
 
 export type PracticePhase =
@@ -39,6 +45,8 @@ export const usePracticeStore = defineStore("practice", () => {
   const pitch = ref(0);
   const speed = ref(1);
   const scrubbing = ref(false);
+  /** 最後にタップした位置（秒）。タップのたびに更新する。開いた直後はなし */
+  const marker = ref<number | null>(null);
   /** 波形の集計結果（大きいので、深い監視はしない） */
   const overview = shallowRef<RowPeaks[] | null>(null);
 
@@ -90,6 +98,7 @@ export const usePracticeStore = defineStore("practice", () => {
     pitch.value = 0;
     speed.value = 1;
     scrubbing.value = false;
+    marker.value = null;
     overview.value = null;
     resumeAfterScrub = false;
   }
@@ -196,6 +205,28 @@ export const usePracticeStore = defineStore("practice", () => {
     engine.seek(seconds);
   }
 
+  /** シークバーのタップ。位置へ移り、その位置にマーカーを置く（古いマーカーは消える） */
+  function tap(seconds: number): void {
+    if (phase.value !== "ready") {
+      return;
+    }
+    marker.value = seconds;
+    seek(seconds);
+  }
+
+  /** 「戻る」ボタン。マーカーより後ろならマーカーへ、それ以外（1 秒以内など）は先頭へ */
+  function prev(): void {
+    seek(prevPosition(position.value, marker.value));
+  }
+
+  /** 「進む」ボタン。再生位置がマーカーより前ならマーカーへ。それ以外は何もしない */
+  function next(): void {
+    const target = nextPosition(position.value, marker.value);
+    if (target !== null) {
+      seek(target);
+    }
+  }
+
   /** ドラッグの開始。音は止める（再生中だったかは覚えておく） */
   function beginScrub(): void {
     if (phase.value !== "ready" || !engine || scrubbing.value) {
@@ -229,6 +260,14 @@ export const usePracticeStore = defineStore("practice", () => {
     resumeAfterScrub = false;
   }
 
+  function stepPitch(delta: number): void {
+    setPitch(pitch.value + delta);
+  }
+
+  function stepSpeed(direction: 1 | -1): void {
+    setSpeed(speed.value + direction * SPEED_STEP);
+  }
+
   function setPitch(value: number): void {
     pitch.value = clampPitch(value);
     engine?.setParams(pitch.value, speed.value);
@@ -256,6 +295,7 @@ export const usePracticeStore = defineStore("practice", () => {
     pitch,
     speed,
     scrubbing,
+    marker,
     overview,
     setDeps,
     open,
@@ -264,11 +304,16 @@ export const usePracticeStore = defineStore("practice", () => {
     pause,
     toggle,
     seek,
+    tap,
+    prev,
+    next,
     beginScrub,
     scrubTo,
     endScrub,
     setPitch,
     setSpeed,
+    stepPitch,
+    stepSpeed,
     recover,
   };
 });

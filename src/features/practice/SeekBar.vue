@@ -9,11 +9,18 @@ import {
 } from "./seek-layout";
 import { resamplePeaks, type RowPeaks } from "./waveform";
 
-const { duration, position, overview } = defineProps<{
+const {
+  duration,
+  position,
+  marker = null,
+  overview,
+} = defineProps<{
   /** 曲の長さ（秒） */
   duration: number;
   /** 再生位置（秒） */
   position: number;
+  /** 最後にタップした位置（秒）。なければ null */
+  marker?: number | null;
   /** 波形の集計結果（未計算なら null） */
   overview: RowPeaks[] | null;
 }>();
@@ -38,14 +45,18 @@ const canvas = ref<HTMLCanvasElement | null>(null);
 const pixelSize = ref({ width: 0, height: 0 });
 
 const labels = computed(() => rowStarts(duration).map(formatTime));
-const head = computed(() => {
-  const { row, ratio } = secondsToPoint(position, duration);
+function lineStyle(seconds: number) {
+  const { row, ratio } = secondsToPoint(seconds, duration);
   return {
     top: `${row * (100 / ROWS)}%`,
     left: `${ratio * 100}%`,
     height: `${100 / ROWS}%`,
   };
-});
+}
+const head = computed(() => lineStyle(position));
+const markerStyle = computed(() =>
+  marker === null ? null : lineStyle(marker),
+);
 
 function draw(): void {
   const el = canvas.value;
@@ -202,6 +213,12 @@ function onPointerCancel(): void {
       :style="{ top: `${row * (100 / ROWS)}%` }"
       >{{ label }}</span
     >
+    <div
+      v-if="markerStyle"
+      class="marker"
+      data-testid="marker"
+      :style="markerStyle"
+    />
     <div class="head" :style="head" />
   </div>
 </template>
@@ -235,11 +252,18 @@ function onPointerCancel(): void {
   line-height: 1.2;
   pointer-events: none;
 }
-.head {
+.head,
+.marker {
   position: absolute;
   width: 2px;
   margin-left: -1px;
-  background: #e5484d;
   pointer-events: none;
+}
+.head {
+  background: #e5484d;
+}
+/* 最後にタップした位置。再生位置の線と同じ形で、色だけ変える */
+.marker {
+  background: #2f6fed;
 }
 </style>

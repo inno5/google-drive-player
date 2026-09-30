@@ -3,6 +3,8 @@ import {
   ROWS,
   pointToSeconds,
   pointerToSeconds,
+  nextPosition,
+  prevPosition,
   rowStarts,
   secondsToPoint,
 } from "./seek-layout";
@@ -42,5 +44,35 @@ describe("seek-layout", () => {
     expect(pointerToSeconds(100, -50, 200, 100, 100)).toBe(5);
     expect(pointerToSeconds(100, 500, 200, 100, 100)).toBe(95);
     expect(pointerToSeconds(10, 10, 0, 0, 100)).toBe(0);
+  });
+});
+
+describe("prevPosition", () => {
+  it("マーカーより後ろ（1 秒を超えて進んでいる）なら、マーカーへ戻る", () => {
+    expect(prevPosition(30, 20)).toBe(20);
+    expect(prevPosition(21.5, 20)).toBe(20);
+  });
+
+  it("マーカーから 1 秒以内なら、曲の先頭へ戻る", () => {
+    expect(prevPosition(21, 20)).toBe(0);
+    expect(prevPosition(20, 20)).toBe(0);
+  });
+
+  it("マーカーより前、またはマーカーがなければ、曲の先頭へ戻る", () => {
+    expect(prevPosition(10, 20)).toBe(0);
+    expect(prevPosition(50, null)).toBe(0);
+  });
+});
+
+describe("nextPosition", () => {
+  it("再生位置がマーカーより前なら、マーカーへ進む", () => {
+    expect(nextPosition(10, 20)).toBe(20);
+    expect(nextPosition(0, 20)).toBe(20);
+  });
+
+  it("マーカー以降、またはマーカーがなければ、何もしない", () => {
+    expect(nextPosition(20, 20)).toBeNull();
+    expect(nextPosition(30, 20)).toBeNull();
+    expect(nextPosition(10, null)).toBeNull();
   });
 });

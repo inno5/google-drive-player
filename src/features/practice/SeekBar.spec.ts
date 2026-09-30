@@ -52,6 +52,17 @@ describe("SeekBar", () => {
     expect(head.style.left).toBe("50%");
   });
 
+  it("マーカーは、位置があるときだけ、その位置に置く", async () => {
+    const wrapper = setup();
+    expect(wrapper.find("[data-testid=marker]").exists()).toBe(false);
+    await wrapper.setProps({ marker: 37.5 });
+    const marker = wrapper.get<HTMLElement>("[data-testid=marker]").element;
+    expect(marker.style.top).toBe("30%");
+    expect(marker.style.left).toBe("75%");
+    await wrapper.setProps({ marker: null });
+    expect(wrapper.find("[data-testid=marker]").exists()).toBe(false);
+  });
+
   it("タップでその位置へ seek する", () => {
     const wrapper = setup();
     pointer(wrapper, "pointerdown", 100, 25);

@@ -160,6 +160,79 @@ describe("practice-store", () => {
     expect(engine.calls).toContain("seek:42");
   });
 
+  it("タップした位置にマーカーを置き、次のタップで置き直す。開いた直後はなし", async () => {
+    const { store, engine } = await setup();
+    expect(store.marker).toBeNull();
+    store.tap(20);
+    expect(store.marker).toBe(20);
+    expect(store.position).toBe(20);
+    expect(engine.calls).toContain("seek:20");
+    store.tap(45);
+    expect(store.marker).toBe(45);
+  });
+
+  it("ドラッグや戻るボタンでは、マーカーは動かない", async () => {
+    const { store } = await setup();
+    store.tap(20);
+    store.beginScrub();
+    store.endScrub(60);
+    store.prev();
+    expect(store.marker).toBe(20);
+  });
+
+  it("戻るボタン: マーカーより後ろならマーカーへ、1 秒以内なら先頭へ", async () => {
+    const { store, engine } = await setup();
+    store.tap(20);
+    engine.events.state({ position: 35 });
+    store.prev();
+    expect(store.position).toBe(20);
+    engine.events.state({ position: 20.5 });
+    store.prev();
+    expect(store.position).toBe(0);
+    expect(engine.calls).toContain("seek:0");
+  });
+
+  it("戻るボタン: マーカーがなければ先頭へ", async () => {
+    const { store } = await setup();
+    store.seek(40);
+    store.prev();
+    expect(store.position).toBe(0);
+  });
+
+  it("進むボタン: マーカーより前ならマーカーへ、マーカー以降・なしなら何もしない", async () => {
+    const { store, engine } = await setup();
+    const seeks = () => engine.calls.filter((c) => c.startsWith("seek")).length;
+    store.next();
+    expect(seeks()).toBe(0);
+    store.tap(40);
+    store.seek(10);
+    const before = seeks();
+    store.next();
+    expect(store.position).toBe(40);
+    expect(seeks()).toBe(before + 1);
+    store.next();
+    expect(store.position).toBe(40);
+    expect(seeks()).toBe(before + 1);
+  });
+
+  it("ピッチは 1 半音ずつ、速度は 0.25 ずつ増減し、上限下限で止まる", async () => {
+    const { store } = await setup();
+    store.stepPitch(1);
+    store.stepPitch(1);
+    expect(store.pitch).toBe(2);
+    store.stepSpeed(-1);
+    expect(store.speed).toBe(0.75);
+    store.stepSpeed(1);
+    store.stepSpeed(1);
+    expect(store.speed).toBe(1.25);
+    for (let i = 0; i < 20; i++) {
+      store.stepSpeed(1);
+      store.stepPitch(-1);
+    }
+    expect(store.speed).toBe(2);
+    expect(store.pitch).toBe(-12);
+  });
+
   it("ドラッグ中は音を止め、離した位置から再開する（再生中だった場合）", async () => {
     const { store, engine } = await setup();
     void store.toggle();
@@ -217,6 +290,7 @@ describe("practice-store", () => {
     expect(engine.calls).toContain("dispose");
     expect(store.phase).toBe("idle");
     expect(store.pitch).toBe(0);
+    expect(store.marker).toBeNull();
     expect(store.overview).toBeNull();
   });
 

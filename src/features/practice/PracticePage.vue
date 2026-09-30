@@ -1,11 +1,17 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted } from "vue";
 import { formatTime } from "@/shared/lib/format";
 import { usePlayPauseKey } from "@/shared/ui/usePlayPauseKey";
-import PitchDialog from "./PitchDialog.vue";
 import SeekBar from "./SeekBar.vue";
-import SpeedDialog from "./SpeedDialog.vue";
-import { formatPitch, formatSpeed } from "./params";
+import StepControl from "./StepControl.vue";
+import {
+  PITCH_MAX,
+  PITCH_MIN,
+  SPEED_MAX,
+  SPEED_MIN,
+  formatPitch,
+  formatSpeed,
+} from "./params";
 import { usePracticeStore, type PracticeSong } from "./practice-store";
 
 /**
@@ -20,8 +26,6 @@ const { song, title = "" } = defineProps<{
 }>();
 
 const store = usePracticeStore();
-const pitchOpen = ref(false);
-const speedOpen = ref(false);
 
 const ready = computed(() => store.phase === "ready");
 const loading = computed(
@@ -69,8 +73,9 @@ onBeforeUnmount(() => {
           <SeekBar
             :duration="store.duration"
             :position="store.position"
+            :marker="store.marker"
             :overview="store.overview"
-            @seek="store.seek"
+            @seek="store.tap"
             @scrub-start="store.beginScrub"
             @scrub="store.scrubTo"
             @scrub-end="store.endScrub"
@@ -80,7 +85,15 @@ onBeforeUnmount(() => {
           <p class="time">
             {{ formatTime(store.position) }} / {{ formatTime(store.duration) }}
           </p>
-          <div class="buttons">
+          <div class="transport">
+            <button
+              type="button"
+              class="prev"
+              aria-label="マーカーまたは先頭へ戻る"
+              @click="store.prev()"
+            >
+              <span class="icon material-icons">skip_previous</span>
+            </button>
             <button
               type="button"
               class="play"
@@ -91,31 +104,44 @@ onBeforeUnmount(() => {
                 store.playing ? "pause" : "play_arrow"
               }}</span>
             </button>
-            <button type="button" class="option" @click="pitchOpen = true">
-              <small>ピッチ</small>
-              <strong>{{ formatPitch(store.pitch) }}</strong>
+            <button
+              type="button"
+              class="next"
+              aria-label="マーカーへ進む"
+              @click="store.next()"
+            >
+              <span class="icon material-icons">skip_next</span>
             </button>
-            <button type="button" class="option" @click="speedOpen = true">
-              <small>速度</small>
-              <strong>{{ formatSpeed(store.speed) }}</strong>
-            </button>
+          </div>
+          <div class="pitch">
+            <StepControl
+              label="ピッチ"
+              :display="formatPitch(store.pitch)"
+              :reset-label="'±0'"
+              :can-decrease="store.pitch > PITCH_MIN"
+              :can-increase="store.pitch < PITCH_MAX"
+              :can-reset="store.pitch !== 0"
+              @decrease="store.stepPitch(-1)"
+              @increase="store.stepPitch(1)"
+              @reset="store.setPitch(0)"
+            />
+          </div>
+          <div class="speed">
+            <StepControl
+              label="速度"
+              :display="formatSpeed(store.speed)"
+              :reset-label="formatSpeed(1)"
+              :can-decrease="store.speed > SPEED_MIN"
+              :can-increase="store.speed < SPEED_MAX"
+              :can-reset="store.speed !== 1"
+              @decrease="store.stepSpeed(-1)"
+              @increase="store.stepSpeed(1)"
+              @reset="store.setSpeed(1)"
+            />
           </div>
         </div>
       </template>
     </template>
-
-    <PitchDialog
-      :open="pitchOpen"
-      :pitch="store.pitch"
-      @close="pitchOpen = false"
-      @change="store.setPitch"
-    />
-    <SpeedDialog
-      :open="speedOpen"
-      :speed="store.speed"
-      @close="speedOpen = false"
-      @change="store.setSpeed"
-    />
   </div>
 </template>
 
@@ -149,48 +175,63 @@ onBeforeUnmount(() => {
   min-height: 0;
 }
 .controls {
+  display: grid;
   flex: none;
+  grid-template:
+    "time pitch" auto
+    "transport speed" auto / auto 1fr;
+  gap: 12px 12px;
+  align-items: center;
   padding: 8px 12px calc(12px + env(safe-area-inset-bottom));
 }
 .time {
-  margin: 0 0 8px;
-  font-size: 12px;
+  grid-area: time;
+  margin: 0;
+  font-size: 16px;
 }
-.buttons {
+.transport {
+  display: flex;
+  grid-area: transport;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.pitch {
+  grid-area: pitch;
+}
+.speed {
+  grid-area: speed;
+}
+.play,
+.prev,
+.next {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-}
-.play {
-  width: 64px;
-  height: 64px;
   border: 0;
   border-radius: 50%;
+  cursor: pointer;
+}
+.play,
+.prev,
+.next {
+  width: 48px;
+  height: 48px;
+}
+.play {
   background: var(--color-main);
   color: var(--color-white);
-  cursor: pointer;
 }
 .play .icon {
-  display: block;
-  font-size: 40px;
+  font-size: 32px;
 }
-.option {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 88px;
-  padding: 8px 12px;
-  border: 1px solid var(--color-main);
-  border-radius: 8px;
-  background: var(--color-white);
-  color: var(--color-main);
-  cursor: pointer;
+.prev,
+.next {
+  background: var(--color-gray);
+  color: var(--color-black);
 }
-.option small {
-  font-size: 10px;
-}
-.option strong {
-  font-size: 20px;
+.prev .icon,
+.next .icon {
+  font-size: 28px;
 }
 </style>
