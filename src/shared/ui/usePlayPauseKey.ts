@@ -1,5 +1,5 @@
 import { onBeforeUnmount, onMounted } from "vue";
-import { useToast } from "@/shared/ui/useToast";
+import { useToast } from "./useToast";
 
 /** usePlayPauseKey が player に求めるもの */
 export interface PlayPauseKeyPlayer {

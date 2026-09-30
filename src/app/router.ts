@@ -40,6 +40,12 @@ export function createAppRouter(
         component: DebugPage,
         meta: { public: true },
       },
+      {
+        path: "/practice",
+        name: "practice",
+        // Worker と SoundTouch は、開いたときに読み込む
+        component: () => import("./PracticeRoute.vue"),
+      },
       { path: "/:pathMatch(.*)*", redirect: { name: "home" } },
     ],
   });

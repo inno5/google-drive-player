@@ -2,7 +2,7 @@
 
 曲のピッチ（キー）と速度を独立して変えながら、曲の細かい位置から繰り返し聴ける「練習ビュー」を追加する。ステップ 1〜5（[09](./09-remaining-diffs.md) まで）で現行版と同等になったあとの、新機能。
 
-状態: **要件確定・音質検証（スパイク）待ち**
+状態: **方式決定済み（SoundTouch + Worker + AudioWorklet）・本実装済み・実機確認待ち**
 
 ## 目的と使い方
 
@@ -77,15 +77,24 @@
 - 曲のデータは、Drive の `downloadFile`（進捗つき）で取得する。メインの再生で取得済みのデータの共有は、しない（ビューを独立させるため）。
 - 既存の `features/player` は変更しない。練習ビューは `features/practice` として独立させる。
 
-### 候補（スパイクで比較して決める）
+### 処理系の方式（決定）
 
-| 案 | 内容 | 想定 |
-| --- | --- | --- |
-| A（比較の基準） | `<audio>` の `playbackRate` と `preservesPitch` | 速度変更だけ。ピッチだけを変える手段がないので、本採用はしない |
-| B | AudioWorklet と SoundTouch 系（[@soundtouchjs/audio-worklet](https://www.npmjs.com/package/@soundtouchjs/audio-worklet) など） | 軽くてスマホ向き。和音の多い曲で音がやや濁る可能性がある。ライセンスは LGPL |
-| C | AudioWorklet と Rubber Band の WASM 版（[rubberband-wasm](https://github.com/Daninet/rubberband-wasm) など） | 音質が最良の見込み。CPU 負荷が高い。ライセンスは GPL（商用は別ライセンス）。公開 URL で配信する場合の扱いを、採用前に確認する |
+**SoundTouch（[@soundtouchjs/core](https://www.npmjs.com/package/@soundtouchjs/core)、MPL-2.0）を、Web Worker で計算し、AudioWorklet で再生する。**
 
-各パッケージの API・ライセンス・iOS での動作は、スパイクの中で確認する（この時点では未確認）。
+- SoundTouch は「ピッチだけ」を変える作り（レート変換 = ピッチ倍率、時間伸縮 = 1 ÷ ピッチ倍率）。時間伸縮の `tempo` を「速度 ÷ ピッチ倍率」に上書きして、速度とピッチを独立に変える。時間伸縮の調整値（区切りの長さ・探索範囲・重ね幅・速い探索）は既定のまま。
+- 計算（SoundTouch）は Worker が約 46 ms 分（2048 フレーム）ずつ先回りして作り、AudioWorklet はできた音を順に流すだけにする。AudioWorklet 側に約 190 ms（8192 フレーム）の作り置きがあるので、計算が一時的に遅れても音が途切れない。
+- ピッチ・速度を変えてから音に反映されるまで、最大で作り置き分（約 0.2 秒）の遅れがある。耳コピの用途では問題ない。
+- ライセンス: MPL-2.0（ファイル単位のコピーレフト）。`@soundtouchjs/core` を改変せずに、依存として使う。
+- AudioWorklet と Worker はメッセージ（`MessagePort`）でつなぐ。`SharedArrayBuffer` は、cross-origin isolation（COOP/COEP）が要って Google 認証のポップアップと相性が悪いので使わない。
+
+#### スパイクの結果
+
+| 案 | 結果 |
+| --- | --- |
+| A: `<audio>` の `playbackRate` | 速度だけ変えられる。ピッチだけを変えられないので不採用 |
+| Rubber Band（WASM、GPL） | 速度・ピッチを変えるたびに 10 秒以上の解析が必要で、ライセンスも重いので不採用 |
+| SoundTouch（AudioWorklet 内で計算） | 音質は申し分なし。MacBook Pro 2019 の Chrome だけ、計算の負荷の波（最大 20 ms 程度。1 回の予算は約 2.9 ms）で音が途切れた（Safari・iPhone 15 の Safari は問題なし） |
+| **SoundTouch（Worker で計算 + AudioWorklet で再生）** | **MacBook の Chrome でも途切れず、iOS の同等アプリに遜色ない音質（採用）** |
 
 ### iOS Safari（16.4 以降）の注意点
 
@@ -96,34 +105,46 @@
 
 ### 波形
 
-- デコード後に、各段 × 画面の幅（px）ごとの最小値・最大値を 1 度だけ集計し、canvas に描く。ステレオは左右を混ぜて（平均して）描く。
-- 画面の幅が変わったとき（回転・リサイズ）は、再集計する。
+- デコード後に、曲を 1 回なぞって、各段を 2400 個に区切った最小値・最大値を集計する（曲のデータは Worker へ渡すと使えなくなるので、この時点で行う）。ステレオは左右を平均して（モノラルにして）集計する。
+- 画面へは、この集計結果を画面の幅（実ピクセル）の列数に作り直して、canvas に描く。幅が変わったとき（回転・リサイズ）も、集計結果から作り直すだけで済む。
 
-## 構成案（スパイクのあとに確定）
+## 構成
 
 ```
 src/features/practice/
-├─ PracticePage.vue        練習ビューの画面（シークバー、コントロール）
-├─ practice-store.ts       Pinia: 読み込み状態、再生位置、ピッチ、速度、再生 / 停止
-├─ engine/                 Web Audio の再生エンジン（スパイクで決めた方式）
-├─ waveform.ts             波形のピーク集計（純粋関数）
-├─ seek-layout.ts          時刻 ⇄ 段・位置の変換（純粋関数）
+├─ PracticePage.vue        練習ビューの画面（シークバー、コントロール、Space キー）
+├─ SeekBar.vue             10 段のシークバー（波形の描画、タップ・ドラッグ）
 ├─ PitchDialog.vue / SpeedDialog.vue
+├─ practice-store.ts       Pinia: 読み込み、再生位置、ピッチ、速度、再生 / 停止、ドラッグ
+├─ seek-layout.ts          時刻 ⇄ 段・位置の変換（純粋関数）
+├─ waveform.ts             波形の集計（純粋関数）
+├─ params.ts               ピッチ・速度の範囲と表示（純粋関数）
+├─ engine/
+│  ├─ engine.ts            AudioContext・Worker・AudioWorklet をまとめた再生エンジン（store はインターフェースだけに頼る）
+│  ├─ soundtouch-worker.ts SoundTouch の計算（Worker）
+│  ├─ soundtouch-processor.ts 再生だけ（AudioWorklet）
+│  └─ messages.ts          3 者の間のメッセージの型
 └─ index.ts
+src/app/
+├─ PracticeRoute.vue       メインで再生中の曲を引き継ぎ、メインの再生を止めて PracticePage へ渡す
+└─ nav-toggle.ts           ヘッダーのトグルの行き先を決める（純粋関数）
+src/shared/ui/
+├─ ModalSheet.vue          ダイアログの枠（下から出るシート）
+└─ usePlayPauseKey.ts      Space キーで再生 / 停止（player から移動）
 ```
 
-- 練習ビューへの曲の引き継ぎは、`usePlayerStore().current` を LibraryPage 側の配線（または app 層）から渡す。practice は player を直接 import しない。
-- ルート `practice` を `router.ts` に追加する。メインビュー（`home` / `folder` / `search`）への戻り先は、`router.afterEach` で記録する（app 層）。
-- ヘッダー（`AppHeader.vue`）の 2 つのボタンは、上の「画面の切り替え」の規則で動く（トグルの判定は純粋関数に切り出す）。
+- 練習ビューへの曲の引き継ぎは、app 層の `PracticeRoute.vue` が `usePlayerStore().current` を props で渡す。practice は player を直接 import しない。
+- ルート `practice` は、Worker と SoundTouch を開いたときに読み込むよう、遅延読み込みにしている。
+- メインビュー（`home` / `folder` / `search`）への戻り先は、`AppHeader.vue` が現在のルートを監視して記録する（`fullPath`。フォルダや検索語を含む）。トグルの行き先の判定は `nav-toggle.ts`。
 
 ## 進め方
 
 1. **要件の確定**（この文書）。
-2. **スパイク**: 音質の試聴用の一時ページ（例: `/practice-lab`。本実装で削除する）を作り、案 A・B・C を切り替えて比べる。
+2. **スパイク（完了）**: 音質の試聴用の一時ページ（`/practice-lab`。本実装で削除した）を作り、方式を比べた。
     - 操作: メインから引き継いだ曲を、ピッチ ±、速度、再生 / 停止、簡易シークで試せる。
     - 確認すること: 音質（ピッチ ±3、速度 0.75 倍などを実機で試聴）、CPU 負荷とバッテリー、シークの反応、マナーモードでの再生、アプリ切り替え後の復帰、メモリ（15 分の曲）。
-    - 結果を、この文書の「決定事項」に追記して、方式を決める。
-3. **本実装**: 画面の切り替え（ルート・ヘッダー）、練習ビュー（シークバー・波形・コントロール）、テスト。
+    - 結果は、上の「スパイクの結果」と「決定事項」に記録した。
+3. **本実装（完了）**: 画面の切り替え（ルート・ヘッダー）、練習ビュー（シークバー・波形・コントロール）、テスト。
 4. 実機（iOS Safari のホーム画面アプリ・PC・Android の Chrome）で確認する。
 
 ## テスト
@@ -137,7 +158,7 @@ src/features/practice/
 
 ## 完了条件
 
-- [ ] `check` がエラー 0・警告 0 で通る
+- [ ] `check` がエラー 0・警告 0 で通る（実行はローカルで行う）
 - [ ] ヘッダーのボタンで、メインビュー ⇄ 練習ビュー、メインビュー ⇄ デバッグをトグルできる（戻り先は直前のメインビュー）
 - [ ] 練習ビューで、メインで再生中の曲を読み込み、波形付きの 10 段シークバーが表示される
 - [ ] タップ・ドラッグで、細かい位置から再生できる
@@ -163,4 +184,6 @@ src/features/practice/
 | 12 | シーク操作 | タップで移動（再生中は継続）、ドラッグ中は無音で、離したところから再開 |
 | 13 | 曲の終わり | 停止して先頭に戻る（次の曲へは進まない） |
 | 14 | 画面 | 縦向き前提。PC は Space で再生 / 一時停止 |
-| 15 | 処理系の方式 | スパイクで決める（候補は案 B・C。案 A は比較の基準） |
+| 15 | 処理系の方式 | SoundTouch（`@soundtouchjs/core`、MPL-2.0）を Web Worker で計算し、AudioWorklet で再生する。約 190 ms の作り置きで途切れを防ぐ（ピッチ・速度の反映は最大約 0.2 秒遅れる） |
+| 16 | 時間伸縮の調整値 | SoundTouch の既定のまま（画面には出さない） |
+| 17 | 波形の集計 | デコード直後に 1 回だけ（各段 2400 区切り）。画面の幅への変換は集計結果から行う |

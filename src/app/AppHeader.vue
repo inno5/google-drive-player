@@ -1,7 +1,28 @@
 <script setup lang="ts">
+import { ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/features/auth";
+import { isMainView, resolveToggle, type ToggleTarget } from "./nav-toggle";
 
 const auth = useAuthStore();
+const route = useRoute();
+const router = useRouter();
+
+// 練習・デバッグから戻るときの行き先（直前のメインビュー。フォルダや検索語を含む）
+const lastMainPath = ref<string | null>(null);
+watch(
+  () => route.fullPath,
+  (path) => {
+    if (isMainView(route.name)) {
+      lastMainPath.value = path;
+    }
+  },
+  { immediate: true },
+);
+
+function toggle(target: ToggleTarget): void {
+  void router.push(resolveToggle(route.name, target, lastMainPath.value));
+}
 </script>
 
 <template>
@@ -27,14 +48,27 @@ const auth = useAuthStore();
         >
           サインアウト
         </button>
-        <RouterLink
-          :to="{ name: 'debug' }"
-          class="nav-link help"
+        <button
+          v-if="auth.status === 'signedIn'"
+          type="button"
+          class="nav-link icon-link practice"
+          :class="{ active: route.name === 'practice' }"
+          aria-label="練習ビュー"
+          title="練習ビュー"
+          @click="toggle('practice')"
+        >
+          <span class="icon material-icons">tune</span>
+        </button>
+        <button
+          type="button"
+          class="nav-link icon-link help"
+          :class="{ active: route.name === 'debug' }"
           aria-label="デバッグ情報"
           title="デバッグ情報"
+          @click="toggle('debug')"
         >
           <span class="icon material-icons">help_outline</span>
-        </RouterLink>
+        </button>
       </nav>
     </div>
   </header>
@@ -96,10 +130,13 @@ a.title-link:active,
 .signout {
   padding: 8px 0 8px 8px;
 }
-.help {
+.icon-link {
   margin-left: 16px;
 }
-.help .icon {
+.icon-link.active {
+  opacity: 0.6;
+}
+.icon-link .icon {
   display: block;
   width: 24px;
   height: 24px;

@@ -1,7 +1,7 @@
 import { mount } from "@vue/test-utils";
 import { defineComponent } from "vue";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useToast } from "@/shared/ui/useToast";
+import { useToast } from "./useToast";
 import { usePlayPauseKey } from "./usePlayPauseKey";
 
 function setup(result: "play" | "pause" | null = "play") {
