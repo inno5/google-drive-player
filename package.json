@@ -22,6 +22,7 @@
     "deploy:preview": "npm run check && npm run build && firebase hosting:channel:deploy preview"
   },
   "dependencies": {
+    "jsmediatags": "inno5/jsmediatags#feature/addCustomHttpHeader",
     "pinia": "^3.0.3",
     "vue": "^3.5.18",
     "vue-draggable-plus": "^0.6.0",

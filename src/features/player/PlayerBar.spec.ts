@@ -89,6 +89,15 @@ describe("PlayerBar", () => {
     expect(wrapper.emitted("locate")).toHaveLength(1);
   });
 
+  it("曲名の表示モードのボタンで cycleDisplayMode を emit し、現在のモードを説明に出す", async () => {
+    const wrapper = factory({ displayModeLabel: "ファイル名" });
+    expect(wrapper.get(".display-mode").attributes("title")).toContain(
+      "ファイル名",
+    );
+    await wrapper.get(".display-mode").trigger("click");
+    expect(wrapper.emitted("cycleDisplayMode")).toHaveLength(1);
+  });
+
   it("再生モードのボタンは、押したモードを emit し、有効なモードを示す", async () => {
     const wrapper = factory({ playMode: "shuffle" });
     expect(wrapper.get(".shuffle").classes()).toContain("active");

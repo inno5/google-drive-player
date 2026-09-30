@@ -4,7 +4,14 @@ import { createClickCounter } from "@/shared/lib/click-count";
 import { formatTime } from "@/shared/lib/format";
 import type { PlayMode, PlayerStatus } from "./player-store";
 
-const { status, currentTime, duration, loadedRatio, playMode } = defineProps<{
+const {
+  status,
+  currentTime,
+  duration,
+  loadedRatio,
+  playMode,
+  displayModeLabel = "",
+} = defineProps<{
   status: PlayerStatus;
   /** 秒 */
   currentTime: number;
@@ -13,6 +20,8 @@ const { status, currentTime, duration, loadedRatio, playMode } = defineProps<{
   /** 曲の取得の進み具合（0〜1） */
   loadedRatio: number;
   playMode: PlayMode;
+  /** 今の曲名の表示モードの説明（ボタンの説明に使う） */
+  displayModeLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -24,6 +33,8 @@ const emit = defineEmits<{
   prev: [];
   next: [];
   setPlayMode: [mode: PlayMode];
+  /** 曲名の表示モードを次へ切り替える */
+  cycleDisplayMode: [];
   /** 再生中の曲を一覧の中で表示する */
   locate: [];
 }>();
@@ -129,6 +140,15 @@ function onInputSeek(event: Event): void {
         <span class="icon material-icons">fast_forward</span>
       </button>
 
+      <button
+        type="button"
+        class="btn display-mode"
+        aria-label="曲名の表示を切り替え"
+        :title="`曲名の表示: ${displayModeLabel}`"
+        @click="emit('cycleDisplayMode')"
+      >
+        <span class="icon material-icons">subtitles</span>
+      </button>
       <button
         type="button"
         class="btn locate"
@@ -263,7 +283,7 @@ function onInputSeek(event: Event): void {
 .pause {
   margin: 0 8px;
 }
-.locate {
+.display-mode {
   margin-left: auto;
 }
 </style>

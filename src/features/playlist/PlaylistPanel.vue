@@ -9,6 +9,7 @@ const {
   playingId = "",
   adding = null,
   scrollToken = 0,
+  displayName,
 } = defineProps<{
   items: PlaylistItem[];
   playingId?: string;
@@ -16,6 +17,8 @@ const {
   adding?: { count: number } | null;
   /** 値が変わるたびに、再生中の行を画面の中央までスクロールする */
   scrollToken?: number;
+  /** 行に表示する曲名。渡さなければファイル名 */
+  displayName?: (item: PlaylistItem) => string;
 }>();
 
 const listElement = useTemplateRef<HTMLElement>("list");
@@ -55,7 +58,7 @@ const emit = defineEmits<{
         <template #default="{ item, index }">
           <TrackRow
             :index="index"
-            :name="item.name"
+            :name="displayName ? displayName(item) : item.name"
             kind="audio"
             :size="item.size"
             :playing="item.id === playingId"

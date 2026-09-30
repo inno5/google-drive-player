@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { onBeforeUnmount, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
   DrivePanel,
@@ -16,6 +16,7 @@ import {
 } from "@/features/player";
 import { PlaylistPanel, usePlaylistStore } from "@/features/playlist";
 import type { PlaylistItem } from "@/features/playlist";
+import { DISPLAY_MODE_LABELS, useTagStore } from "@/features/tags";
 import { createGetItems } from "./play-sources";
 import ViewTabs from "./ViewTabs.vue";
 import { useViewStore } from "./view-store";
@@ -26,6 +27,9 @@ const drive = useDriveStore();
 const playlist = usePlaylistStore();
 const player = usePlayerStore();
 const viewStore = useViewStore();
+const tags = useTagStore();
+
+const APP_TITLE = "Google Drive Player";
 
 // URL が正。ルートが変わったら、その内容を読み込む
 watch(
@@ -62,8 +66,29 @@ player.configure({
 });
 usePlayPauseKey(player);
 useMediaSession(player, () =>
-  player.current ? { title: player.current.name } : null,
+  player.current ? tags.mediaMetadata(player.current) : null,
 );
+
+// プレイリストが変わったら、未読の曲のタグを読む
+watch(
+  () => playlist.items,
+  (items) => {
+    tags.sync(items);
+  },
+  { immediate: true },
+);
+
+// 再生中の曲の表示名をページのタイトルにする
+watch(
+  () => (player.current ? tags.displayName(player.current) : APP_TITLE),
+  (title) => {
+    document.title = title;
+  },
+  { immediate: true },
+);
+onBeforeUnmount(() => {
+  document.title = APP_TITLE;
+});
 
 /** 値を増やすたびに、両方の一覧が再生中の行までスクロールする */
 const scrollToken = ref(0);
@@ -90,12 +115,14 @@ function onActivatePlaylist(item: PlaylistItem): void {
         :duration="player.duration"
         :loaded-ratio="player.loadedRatio"
         :play-mode="player.playMode"
+        :display-mode-label="DISPLAY_MODE_LABELS[tags.displayMode]"
         @toggle="player.toggle()"
         @seek="player.seek"
         @restart="player.restart()"
         @prev="player.prev()"
         @next="player.next()"
         @set-play-mode="player.setPlayMode"
+        @cycle-display-mode="tags.cycleDisplayMode()"
         @locate="scrollToken += 1"
       />
     </div>
@@ -127,6 +154,7 @@ function onActivatePlaylist(item: PlaylistItem): void {
           <PlaylistPanel
             :items="playlist.items"
             :adding="playlist.adding"
+            :display-name="tags.displayName"
             :playing-id="player.current?.id ?? ''"
             :scroll-token="scrollToken"
             @activate="onActivatePlaylist"

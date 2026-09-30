@@ -2,29 +2,21 @@
 import { watch } from "vue";
 import { useAuthStore } from "@/features/auth";
 import { usePlayerStore } from "@/features/player";
+import { useTagStore } from "@/features/tags";
 import AppToast from "@/shared/ui/AppToast.vue";
 import AppHeader from "./AppHeader.vue";
 
 const auth = useAuthStore();
 const player = usePlayerStore();
+const tags = useTagStore();
 
-const APP_TITLE = "Google Drive Player";
-
-// 再生中の曲名をページのタイトルにする
-watch(
-  () => player.current,
-  (current) => {
-    document.title = current ? current.name : APP_TITLE;
-  },
-  { immediate: true },
-);
-
-// サインアウトしたら再生を止める
+// サインアウトしたら、再生とタグの読み取りを止める
 watch(
   () => auth.status,
   (status) => {
     if (status === "signedOut") {
       player.stop();
+      tags.clearQueue();
     }
   },
 );

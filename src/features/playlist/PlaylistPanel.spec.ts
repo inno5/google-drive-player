@@ -38,6 +38,18 @@ describe("PlaylistPanel", () => {
     expect(rows[1]?.get(".name").text()).toBe("b.mp3");
   });
 
+  it("displayName を渡すと、その曲名で表示する。渡さなければファイル名", () => {
+    const wrapper = factory({
+      displayName: (item: PlaylistItem) => `[${item.id}] ${item.name}`,
+    });
+    expect(wrapper.findAll(".track-row")[0]?.get(".name").text()).toBe(
+      "[1] a.mp3",
+    );
+    expect(factory().findAll(".track-row")[0]?.get(".name").text()).toBe(
+      "a.mp3",
+    );
+  });
+
   it("空のときは No data を表示する", () => {
     const wrapper = factory({ items: [] });
     expect(wrapper.get(".empty").text()).toBe("No data :)");

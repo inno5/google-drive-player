@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useDriveStore, type DriveApi, type DriveItem } from "@/features/drive";
 import { usePlayerStore, type AudioPlayer } from "@/features/player";
 import { usePlaylistStore } from "@/features/playlist";
+import { useTagStore, type ReadOutcome } from "@/features/tags";
 import LibraryPage from "./LibraryPage.vue";
 import { SortableListStub } from "@/shared/ui/sortable-list-stub";
 
@@ -27,9 +28,16 @@ const songItem: DriveItem = {
   parents: ["root"],
 };
 
+const TAGS = { artist: "Artist", title: "Song", album: "Album", track: "3" };
+
 async function setup(
   initialPath = "/",
-  options: { items?: DriveItem[]; beforeMount?: () => void } = {},
+  options: {
+    items?: DriveItem[];
+    beforeMount?: () => void;
+    /** タグの読み取り。省略すると「タグなし」を返す */
+    readTags?: (id: string) => Promise<ReadOutcome>;
+  } = {},
 ) {
   localStorage.clear();
   setActivePinia(createPinia());
@@ -50,6 +58,9 @@ async function setup(
   } satisfies DriveApi;
   useDriveStore().setApi(api);
   usePlaylistStore().setApi(api);
+  useTagStore().setReader(
+    options.readTags ?? (() => Promise.resolve({ status: "none" })),
+  );
   options.beforeMount?.();
 
   const router = createRouter({
@@ -195,6 +206,34 @@ describe("LibraryPage", () => {
     expect(wrapper.get(".pane-playlist .empty").text()).toBe("No data :)");
   });
 
+  it("プレイリストの曲はタグで表示し、表示モードのボタンで切り替える。ドライブ内一覧はファイル名のまま", async () => {
+    const readTags = vi.fn((_id: string) =>
+      Promise.resolve<ReadOutcome>({ status: "ok", tags: TAGS }),
+    );
+    const { wrapper } = await setup("/", {
+      items: [songItem],
+      readTags,
+      beforeMount: () => {
+        usePlaylistStore().items = [songItem];
+      },
+    });
+    await flushPromises();
+    expect(readTags).toHaveBeenCalledWith("s1");
+
+    const playlistName = () =>
+      wrapper.get(".pane-playlist .track-row .name").text();
+    const driveName = () => wrapper.get(".pane-drive .track-row .name").text();
+    expect(playlistName()).toBe("Song - Artist");
+
+    await wrapper.get(".display-mode").trigger("click");
+    expect(playlistName()).toBe("Artist / Album [3] - Song");
+    await wrapper.get(".display-mode").trigger("click");
+    expect(playlistName()).toBe("song.mp3");
+    await wrapper.get(".display-mode").trigger("click");
+    expect(playlistName()).toBe("Song - Artist");
+    expect(driveName()).toBe("song.mp3");
+  });
+
   describe("再生", () => {
     function fakeAudio() {
       return {
@@ -251,6 +290,30 @@ describe("LibraryPage", () => {
 
       expect(audio.setSource).toHaveBeenCalledWith("blob:s1");
       expect(usePlayerStore().source).toBe("playlist");
+    });
+
+    it("再生中の曲の表示名をページのタイトルにする", async () => {
+      const audio = fakeAudio();
+      const { wrapper } = await setup("/", {
+        readTags: () => Promise.resolve({ status: "ok", tags: TAGS }),
+        beforeMount: () => {
+          configurePlayer(audio)();
+          usePlaylistStore().items = [songItem];
+        },
+      });
+      await flushPromises();
+      expect(document.title).toBe("Google Drive Player");
+
+      await usePlayerStore().play(songItem, "playlist");
+      await flushPromises();
+      expect(document.title).toBe("Song - Artist");
+
+      await wrapper.get(".display-mode").trigger("click");
+      await wrapper.get(".display-mode").trigger("click");
+      expect(document.title).toBe("song.mp3");
+
+      wrapper.unmount();
+      expect(document.title).toBe("Google Drive Player");
     });
 
     it("別のフォルダを開いても再生は止まらない", async () => {
