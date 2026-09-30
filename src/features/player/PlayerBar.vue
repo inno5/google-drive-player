@@ -147,7 +147,7 @@ function onInputSeek(event: Event): void {
         :title="`曲名の表示: ${displayModeLabel}`"
         @click="emit('cycleDisplayMode')"
       >
-        <span class="icon material-icons">subtitles</span>
+        <span class="icon material-icons">list</span>
       </button>
       <button
         type="button"
@@ -207,6 +207,10 @@ function onInputSeek(event: Event): void {
   cursor: pointer;
   -webkit-appearance: none;
   appearance: none;
+}
+.bar[type="range"]:active::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px rgb(255 255 255 / 60%);
+  transition: 0.4s;
 }
 .bar[type="range"]::-moz-range-thumb {
   width: 22px;

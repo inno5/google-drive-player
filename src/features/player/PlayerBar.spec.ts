@@ -90,9 +90,9 @@ describe("PlayerBar", () => {
   });
 
   it("曲名の表示モードのボタンで cycleDisplayMode を emit し、現在のモードを説明に出す", async () => {
-    const wrapper = factory({ displayModeLabel: "ファイル名" });
+    const wrapper = factory({ displayModeLabel: "file name" });
     expect(wrapper.get(".display-mode").attributes("title")).toContain(
-      "ファイル名",
+      "file name",
     );
     await wrapper.get(".display-mode").trigger("click");
     expect(wrapper.emitted("cycleDisplayMode")).toHaveLength(1);

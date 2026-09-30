@@ -12,11 +12,11 @@ export const DISPLAY_MODES: readonly DisplayMode[] = [
 
 export const DEFAULT_DISPLAY_MODE: DisplayMode = "titleArtist";
 
-/** 切り替えたときのトースト・ボタンの説明に使う */
+/** 切り替えたときのトースト・ボタンの説明に使う（現行版と同じ英語） */
 export const DISPLAY_MODE_LABELS: Readonly<Record<DisplayMode, string>> = {
-  titleArtist: "タイトル - アーティスト",
-  full: "アーティスト / アルバム [トラック] - タイトル",
-  fileName: "ファイル名",
+  titleArtist: "title - artist",
+  full: "artist / album [track] - title",
+  fileName: "file name",
 };
 
 export function isDisplayMode(value: unknown): value is DisplayMode {

@@ -12,6 +12,7 @@ google-drive-player の設計・方針ドキュメント置き場。
 | [06-playlist.md](./06-playlist.md) | ステップ 3（プレイリスト）と、一覧画面全体（タブ切り替え・行の操作）の設計 |
 | [07-player.md](./07-player.md) | ステップ 4（再生）の範囲・設計・完了条件 |
 | [08-tags.md](./08-tags.md) | ステップ 5（タグと表示モード）の範囲・設計・完了条件 |
+| [09-remaining-diffs.md](./09-remaining-diffs.md) | 現行版との差分と、残りの整理項目 |
 
 ## 運用ルール
 

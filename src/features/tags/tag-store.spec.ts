@@ -254,7 +254,7 @@ describe("tag-store: 表示", () => {
     expect(store.displayMode).toBe("full");
     expect(loadSettings().displayMode).toBe("full");
     expect(useToast().toasts.value.map((t) => t.text)).toEqual([
-      "アーティスト / アルバム [トラック] - タイトル",
+      "artist / album [track] - title",
     ]);
   });
 

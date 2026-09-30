@@ -3,7 +3,8 @@
 Google Drive 内の音楽を再生する Web アプリ（Vue 3.5 + Vite + TypeScript + Pinia）。
 設計・方針は [docs/](./docs/README.md) を参照。
 
-現在はステップ 1（基盤と認証）まで。Drive 一覧・再生はステップ 2 以降。
+現行版（Vue 2）の機能はひととおり実装済み（ステップ 1〜5: 認証、Drive の一覧・検索、プレイリスト、再生、タグと表示モード）。
+現行版との差分は [docs/09](./docs/09-remaining-diffs.md) を参照。
 
 ## セットアップ
 

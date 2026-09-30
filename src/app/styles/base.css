@@ -29,3 +29,10 @@ body {
   text-align: center;
   -webkit-font-smoothing: antialiased;
 }
+
+/* リンク・ボタンの文字は選択できないようにする（現行版と同じ） */
+a,
+button {
+  -webkit-user-select: none;
+  user-select: none;
+}
