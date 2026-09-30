@@ -13,6 +13,7 @@ google-drive-player の設計・方針ドキュメント置き場。
 | [07-player.md](./07-player.md) | ステップ 4（再生）の範囲・設計・完了条件 |
 | [08-tags.md](./08-tags.md) | ステップ 5（タグと表示モード）の範囲・設計・完了条件 |
 | [09-remaining-diffs.md](./09-remaining-diffs.md) | 現行版との差分と、残りの整理項目 |
+| [10-practice-mode.md](./10-practice-mode.md) | 練習ビュー（ギター耳コピ用: ピッチ・速度変更、波形つき 10 段シークバー）の要件と進め方 |
 
 ## 運用ルール
 
