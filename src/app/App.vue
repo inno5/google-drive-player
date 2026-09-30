@@ -16,8 +16,9 @@ const auth = useAuthStore();
 <style scoped>
 .app-body {
   position: relative;
-  max-width: var(--app-max-width);
-  margin: 0 auto;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 .loading {
   padding: 24px;

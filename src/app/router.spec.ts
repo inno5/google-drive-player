@@ -104,6 +104,38 @@ describe("router", () => {
     expect(router.currentRoute.value.name).toBe("home");
   });
 
+  it("/folders/:id と /search/:q は、未サインインなら /signin へ", async () => {
+    const auth = useAuthStore();
+    await auth.init(fakeClient());
+    const router = createAppRouter(auth, createMemoryHistory());
+    await router.push("/folders/abc");
+    expect(router.currentRoute.value.name).toBe("signin");
+    await router.push("/search/foo");
+    expect(router.currentRoute.value.name).toBe("signin");
+  });
+
+  it("サインイン済みなら /folders/:id と /search/:q を開ける", async () => {
+    const auth = useAuthStore();
+    await auth.init(
+      fakeClient({
+        signedIn: true,
+        accessToken: "t",
+        expiresAt: Date.now() + HOUR,
+      }),
+    );
+    const router = createAppRouter(auth, createMemoryHistory());
+    await router.push("/folders/abc");
+    expect(router.currentRoute.value).toMatchObject({
+      name: "folder",
+      params: { id: "abc" },
+    });
+    await router.push("/search/foo");
+    expect(router.currentRoute.value).toMatchObject({
+      name: "search",
+      params: { q: "foo" },
+    });
+  });
+
   it("未知の URL は home へ（未サインインなら signin）", async () => {
     const auth = useAuthStore();
     await auth.init(fakeClient());

@@ -7,7 +7,7 @@ import {
 } from "vue-router";
 import { SignInPage, type useAuthStore } from "@/features/auth";
 import { DebugPage } from "@/features/debug";
-import HomePage from "./HomePage.vue";
+import { LibraryPage } from "@/features/library";
 
 declare module "vue-router" {
   interface RouteMeta {
@@ -25,7 +25,9 @@ export function createAppRouter(
   const router = createRouter({
     history,
     routes: [
-      { path: "/", name: "home", component: HomePage },
+      { path: "/", name: "home", component: LibraryPage },
+      { path: "/folders/:id", name: "folder", component: LibraryPage },
+      { path: "/search/:q", name: "search", component: LibraryPage },
       {
         path: "/signin",
         name: "signin",

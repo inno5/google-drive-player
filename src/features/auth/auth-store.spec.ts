@@ -276,4 +276,53 @@ describe("auth store", () => {
       expect(client.reloadToken).not.toHaveBeenCalled();
     });
   });
+
+  describe("refreshToken", () => {
+    it("reloadToken で取り直したトークンを返す", async () => {
+      const client = fakeClient({
+        signedIn: true,
+        accessToken: "old",
+        expiresAt: Date.now() + HOUR,
+      });
+      client.reloadToken = vi.fn(() => {
+        client.state = {
+          signedIn: true,
+          accessToken: "fresh",
+          expiresAt: Date.now() + HOUR,
+        };
+        return Promise.resolve();
+      });
+      const auth = useAuthStore();
+      await auth.init(client);
+      await expect(auth.refreshToken()).resolves.toBe("fresh");
+    });
+
+    it("保存トークンで復元した状態では取り直せず、signedOut になる", async () => {
+      storeWithData();
+      saveToken({ accessToken: "saved", expiresAt: Date.now() + HOUR });
+      const auth = useAuthStore();
+      await auth.init(fakeClient());
+      await expect(auth.refreshToken()).rejects.toBeInstanceOf(
+        AuthExpiredError,
+      );
+      expect(auth.status).toBe("signedOut");
+      expectDataKept();
+    });
+  });
+
+  it("expire は認証トークンだけを消して signedOut にする", async () => {
+    storeWithData();
+    const auth = useAuthStore();
+    await auth.init(
+      fakeClient({
+        signedIn: true,
+        accessToken: "abc",
+        expiresAt: Date.now() + HOUR,
+      }),
+    );
+    auth.expire();
+    expect(auth.status).toBe("signedOut");
+    expect(localStorage.getItem(AUTH_TOKEN_STORAGE_KEY)).toBeNull();
+    expectDataKept();
+  });
 });

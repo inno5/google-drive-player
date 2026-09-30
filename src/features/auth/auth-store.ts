@@ -173,9 +173,35 @@ export const useAuthStore = defineStore("auth", () => {
       }
     }
 
+    expire();
+    throw new AuthExpiredError();
+  }
+
+  /**
+   * アクセストークンを強制的に取り直す（API が 401 を返したとき用）。
+   * 取り直せなければ signedOut にして AuthExpiredError。
+   */
+  async function refreshToken(): Promise<string> {
+    await whenReady();
+    if (!restoredFromStorage.value && client) {
+      try {
+        await client.reloadToken();
+      } catch (e) {
+        error.value = toMessage(e);
+      }
+      apply();
+      if (status.value === "signedIn" && !restoredFromStorage.value) {
+        return accessToken.value;
+      }
+    }
+    expire();
+    throw new AuthExpiredError();
+  }
+
+  /** トークンが使えないと分かったとき、保存トークンを消して signedOut にする */
+  function expire(): void {
     clearToken();
     setSignedOut();
-    throw new AuthExpiredError();
   }
 
   function renderSignInButton(element: HTMLElement): void {
@@ -194,6 +220,8 @@ export const useAuthStore = defineStore("auth", () => {
     signIn,
     signOut,
     getValidToken,
+    refreshToken,
+    expire,
     renderSignInButton,
   };
 });

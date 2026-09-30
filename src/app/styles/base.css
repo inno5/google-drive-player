@@ -17,6 +17,11 @@ body,
   margin: 0;
 }
 
+#app {
+  display: flex;
+  flex-direction: column;
+}
+
 body {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   font-size: 12px;
