@@ -16,6 +16,7 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
+  envDir: "./env",
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
