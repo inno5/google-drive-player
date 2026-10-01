@@ -27,9 +27,9 @@ const emit = defineEmits<{
 
 <template>
   <div class="step-control">
-    <span class="label">{{ label }}: </span>
+    <span class="label">{{ label }}</span>
     <span class="value">
-      <strong data-testid="value">{{ display }}</strong>
+      : <strong data-testid="value">{{ display }}</strong>
     </span>
     <button
       type="button"
@@ -69,14 +69,15 @@ const emit = defineEmits<{
 }
 .label {
   flex: none;
-  min-width: 4em;
+  min-width: 3em;
   font-size: 12px;
   text-align: right;
   white-space: nowrap;
+  text-align-last: justify;
 }
 .value {
   flex: none;
-  min-width: 3em;
+  min-width: 3.5em;
   font-size: 12px;
   text-align: left;
   white-space: nowrap;

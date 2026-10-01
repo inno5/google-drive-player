@@ -75,6 +75,17 @@ onMounted(() => {
     <h2>情報とデバッグ</h2>
 
     <section>
+      <h3>サインアウト</h3>
+      <button
+        v-if="auth.status === 'signedIn'"
+        type="button"
+        @click="auth.signOut()"
+      >
+        サインアウト
+      </button>
+    </section>
+
+    <section>
       <h3>アプリ</h3>
       <dl>
         <dt>バージョン</dt>
@@ -103,13 +114,6 @@ onMounted(() => {
         <dt>エラー</dt>
         <dd>{{ auth.error ?? "-" }}</dd>
       </dl>
-      <button
-        v-if="auth.status === 'signedIn'"
-        type="button"
-        @click="auth.signOut()"
-      >
-        サインアウト
-      </button>
     </section>
 
     <section>

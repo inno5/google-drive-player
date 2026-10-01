@@ -1,3 +1,8 @@
+html {
+  /* ダブルタップでの拡大を防ぐ（ピンチでの拡大・スクロールはそのまま） */
+  touch-action: manipulation;
+}
+
 :root {
   --color-main: #3bbec0;
   --color-white: #fff;

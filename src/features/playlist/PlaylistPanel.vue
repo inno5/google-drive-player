@@ -9,7 +9,7 @@ const {
   playingId = "",
   adding = null,
   scrollToken = 0,
-  displayName,
+  displayName = (item: PlaylistItem) => item.name,
 } = defineProps<{
   items: PlaylistItem[];
   playingId?: string;
@@ -58,7 +58,7 @@ const emit = defineEmits<{
         <template #default="{ item, index }">
           <TrackRow
             :index="index"
-            :name="displayName ? displayName(item) : item.name"
+            :name="displayName(item)"
             kind="audio"
             :size="item.size"
             :playing="item.id === playingId"

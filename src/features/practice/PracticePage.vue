@@ -82,62 +82,67 @@ onBeforeUnmount(() => {
           />
         </div>
         <div class="controls">
-          <p class="time">
-            {{ formatTime(store.position) }} / {{ formatTime(store.duration) }}
-          </p>
-          <div class="transport">
-            <button
-              type="button"
-              class="prev"
-              aria-label="マーカーまたは先頭へ戻る"
-              @click="store.prev()"
-            >
-              <span class="icon material-icons">skip_previous</span>
-            </button>
-            <button
-              type="button"
-              class="play"
-              :aria-label="store.playing ? '一時停止' : '再生'"
-              @click="store.toggle()"
-            >
-              <span class="icon material-icons">{{
-                store.playing ? "pause" : "play_arrow"
-              }}</span>
-            </button>
-            <button
-              type="button"
-              class="next"
-              aria-label="マーカーへ進む"
-              @click="store.next()"
-            >
-              <span class="icon material-icons">skip_next</span>
-            </button>
+          <div class="control-col-left">
+            <p class="time">
+              {{ formatTime(store.position) }} /
+              {{ formatTime(store.duration) }}
+            </p>
+            <div class="transport">
+              <button
+                type="button"
+                class="prev"
+                aria-label="マーカーまたは先頭へ戻る"
+                @click="store.prev()"
+              >
+                <span class="icon material-icons">skip_previous</span>
+              </button>
+              <button
+                type="button"
+                class="play"
+                :aria-label="store.playing ? '一時停止' : '再生'"
+                @click="store.toggle()"
+              >
+                <span class="icon material-icons">{{
+                  store.playing ? "pause" : "play_arrow"
+                }}</span>
+              </button>
+              <button
+                type="button"
+                class="next"
+                aria-label="マーカーへ進む"
+                @click="store.next()"
+              >
+                <span class="icon material-icons">skip_next</span>
+              </button>
+            </div>
           </div>
-          <div class="pitch">
-            <StepControl
-              label="ピッチ"
-              :display="formatPitch(store.pitch)"
-              :reset-label="'±0'"
-              :can-decrease="store.pitch > PITCH_MIN"
-              :can-increase="store.pitch < PITCH_MAX"
-              :can-reset="store.pitch !== 0"
-              @decrease="store.stepPitch(-1)"
-              @increase="store.stepPitch(1)"
-              @reset="store.setPitch(0)"
-            />
-          </div>
-          <div class="speed">
-            <StepControl
-              label="速度"
-              :display="formatSpeed(store.speed)"
-              :reset-label="formatSpeed(1)"
-              :can-decrease="store.speed > SPEED_MIN"
-              :can-increase="store.speed < SPEED_MAX"
-              :can-reset="store.speed !== 1"
-              @decrease="store.stepSpeed(-1)"
-              @increase="store.stepSpeed(1)"
-              @reset="store.setSpeed(1)"
-            />
+          <div class="control-col-right">
+            <div class="pitch">
+              <StepControl
+                label="ピッチ"
+                :display="formatPitch(store.pitch)"
+                :reset-label="'±0'"
+                :can-decrease="store.pitch > PITCH_MIN"
+                :can-increase="store.pitch < PITCH_MAX"
+                :can-reset="store.pitch !== 0"
+                @decrease="store.stepPitch(-1)"
+                @increase="store.stepPitch(1)"
+                @reset="store.setPitch(0)"
+              />
+            </div>
+            <div class="speed">
+              <StepControl
+                label="速度"
+                :display="formatSpeed(store.speed)"
+                :reset-label="formatSpeed(1)"
+                :can-decrease="store.speed > SPEED_MIN"
+                :can-increase="store.speed < SPEED_MAX"
+                :can-reset="store.speed !== 1"
+                @decrease="store.stepSpeed(-1)"
+                @increase="store.stepSpeed(1)"
+                @reset="store.setSpeed(1)"
+              />
+            </div>
           </div>
         </div>
       </template>
@@ -175,14 +180,22 @@ onBeforeUnmount(() => {
   min-height: 0;
 }
 .controls {
-  display: grid;
-  flex: none;
-  grid-template:
-    "time pitch" auto
-    "transport speed" auto / auto 1fr;
-  gap: 12px 12px;
+  display: flex;
+  gap: 12px;
   align-items: center;
   padding: 8px 12px calc(12px + env(safe-area-inset-bottom));
+  margin: 0 auto;
+
+  .control-col-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .control-col-right {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
 }
 .time {
   grid-area: time;
@@ -212,13 +225,14 @@ onBeforeUnmount(() => {
   border-radius: 50%;
   cursor: pointer;
 }
-.play,
 .prev,
 .next {
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
 }
 .play {
+  width: 48px;
+  height: 48px;
   background: var(--color-main);
   color: var(--color-white);
 }
